@@ -1,39 +1,21 @@
 package com.plywoodpocket.crm
 
+import android.Manifest
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,26 +25,56 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.plywoodpocket.crm.ui.theme.Black
-import com.plywoodpocket.crm.ui.theme.Gray
-import com.plywoodpocket.crm.ui.theme.Orange
-import com.plywoodpocket.crm.ui.theme.OrangeLight
-import com.plywoodpocket.crm.ui.theme.PlywoodPocketTheme
-import com.plywoodpocket.crm.ui.theme.White
+import com.plywoodpocket.crm.components.InfiniteCardView
+import com.plywoodpocket.crm.ui.theme.*
+import com.plywoodpocket.crm.utils.PermissionHandler
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import androidx.compose.foundation.border
 
 class MainActivity : ComponentActivity() {
+    private var showPermissionDialog by mutableStateOf(false)
+
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.entries.all { it.value }
+        if (!allGranted) {
+            showPermissionDialog = true
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            LaunchedEffect(Unit) {
+                if (!PermissionHandler.hasRequiredPermissions(this@MainActivity)) {
+                    permissionLauncher.launch(arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ))
+                }
+            }
+
             PlywoodPocketTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
                     DashboardScreen()
                 }
+            }
+
+            if (showPermissionDialog) {
+                PermissionHandler.PermissionRequestDialog(
+                    onDismiss = { showPermissionDialog = false },
+                    onSettingsClick = {
+                        PermissionHandler.openAppSettings(this@MainActivity)
+                        showPermissionDialog = false
+                    }
+                )
             }
         }
     }
@@ -71,20 +83,25 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DashboardScreen() {
     var selectedTab by remember { mutableStateOf(0) }
-    var selectedIndex by remember { mutableStateOf(2) } // Default: Dashboard active
+    var selectedIndex by remember { mutableStateOf(2) }
+    var searchQuery by remember { mutableStateOf("") }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(White)
     ) {
         Spacer(modifier = Modifier.height(36.dp))
-        SearchBar()
+        SearchBar(
+            query = searchQuery,
+            onQueryChange = { searchQuery = it }
+        )
         Spacer(modifier = Modifier.height(32.dp))
-        BankCard()
+        InfiniteCardView()
         Spacer(modifier = Modifier.height(40.dp))
         TabRowSection(selectedTab) { selectedTab = it }
         Spacer(modifier = Modifier.height(32.dp))
-        GridMenu()
+        GridMenu(searchQuery)
         Spacer(modifier = Modifier.weight(1f))
         BottomNavBar(
             selectedIndex = selectedIndex,
@@ -96,62 +113,43 @@ fun DashboardScreen() {
 }
 
 @Composable
-fun SearchBar() {
-    var text by remember { mutableStateOf("") }
+fun SearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .background(Gray.copy(alpha = 0.08f), RoundedCornerShape(24.dp))
-            .height(48.dp),
+            .height(56.dp),
         contentAlignment = Alignment.CenterStart
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxSize()
+        ) {
             Icon(
                 painter = painterResource(id = android.R.drawable.ic_menu_search),
                 contentDescription = null,
                 tint = Gray,
                 modifier = Modifier.padding(start = 16.dp)
             )
-            Text(
-                text = "What would you like to do today?",
-                color = Gray,
-                fontSize = 16.sp,
-                modifier = Modifier.padding(start = 8.dp)
+            TextField(
+                value = query,
+                onValueChange = onQueryChange,
+                placeholder = { Text("What would you like to do today?") },
+                singleLine = true,
+                colors = TextFieldDefaults.colors(
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 8.dp, end = 8.dp)
             )
-        }
-    }
-}
-
-@Composable
-fun BankCard() {
-    Box(
-        modifier = Modifier
-            .padding(horizontal = 24.dp)
-            .fillMaxWidth()
-            .height(200.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(
-                brush = Brush.horizontalGradient(listOf(Orange, OrangeLight))
-            )
-    ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            Text("ICICI Bank", color = White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Spacer(modifier = Modifier.height(12.dp))
-            Text("2300 1130 5224", color = White, fontWeight = FontWeight.Bold, fontSize = 24.sp)
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Account No.", color = White.copy(alpha = 0.8f), fontSize = 14.sp)
-                Spacer(modifier = Modifier.width(16.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(OrangeLight.copy(alpha = 0.7f))
-                        .padding(horizontal = 18.dp, vertical = 8.dp)
-                ) {
-                    Text("Show Balance", color = White, fontSize = 14.sp)
-                }
-            }
         }
     }
 }
@@ -193,8 +191,7 @@ fun TabItem(title: String, selected: Boolean, modifier: Modifier = Modifier, onC
 }
 
 @Composable
-fun GridMenu() {
-    // Define columns for Home, Analytics, Performance
+fun GridMenu(searchQuery: String) {
     val homeItems = listOf(
         Triple("Attendance", android.R.drawable.ic_menu_my_calendar, Color(0xFF1976D2)),
         Triple("Plans", android.R.drawable.ic_menu_compass, Color(0xFF1976D2)),
@@ -211,31 +208,56 @@ fun GridMenu() {
         Triple("Secondary Sales", android.R.drawable.ic_menu_send, Color(0xFF1976D2))
     )
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.Center
-    ) {
-        Column(
-            modifier = Modifier.width(100.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+    val allItems = homeItems + analyticsItems + performanceItems
+    val filteredItems = if (searchQuery.isBlank()) null else allItems.filter { it.first.contains(searchQuery, ignoreCase = true) }
+
+    if (filteredItems == null) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.Center
         ) {
-            homeItems.forEach { MenuItem(it.first, it.second, it.third) }
+            Column(
+                modifier = Modifier.width(100.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                homeItems.forEach { MenuItem(it.first, it.second, it.third) }
+            }
+            Spacer(modifier = Modifier.width(24.dp))
+            Column(
+                modifier = Modifier.width(100.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                analyticsItems.forEach { MenuItem(it.first, it.second, it.third) }
+            }
+            Spacer(modifier = Modifier.width(24.dp))
+            Column(
+                modifier = Modifier.width(100.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                performanceItems.forEach { MenuItem(it.first, it.second, it.third) }
+            }
         }
-        Spacer(modifier = Modifier.width(24.dp))
-        Column(
-            modifier = Modifier.width(100.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            analyticsItems.forEach { MenuItem(it.first, it.second, it.third) }
-        }
-        Spacer(modifier = Modifier.width(24.dp))
-        Column(
-            modifier = Modifier.width(100.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            performanceItems.forEach { MenuItem(it.first, it.second, it.third) }
+    } else {
+        if (filteredItems.isEmpty()) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No results found", color = Gray)
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                filteredItems.forEach { MenuItem(it.first, it.second, it.third) }
+            }
         }
     }
 }
@@ -252,7 +274,7 @@ fun MenuItem(title: String, iconRes: Int, textColor: Color) {
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .clip(RoundedCornerShape(8.dp)) // Square with rounded corners
+                .clip(RoundedCornerShape(8.dp))
                 .background(White)
                 .border(1.dp, Orange, RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center
@@ -302,7 +324,7 @@ fun BottomNavBar(
             }
             BottomNavItem(Icons.Filled.Menu, "Dashboard", selectedIndex == 2) {
                 setSelectedIndex(2)
-                setSelectedTab(0) // Home tab ka content dikhe, Dashboard active ho
+                setSelectedTab(0)
             }
             BottomNavItem(Icons.Filled.ShoppingCart, "Offers", selectedIndex == 3) {
                 setSelectedIndex(3)
@@ -312,16 +334,19 @@ fun BottomNavBar(
             }
         }
     }
-    // Show dashboard only if Dashboard is selected
-    if (selectedIndex == 2) {
-        // Already on dashboard, do nothing (future: show other dashboards)
-    }
 }
 
 @Composable
-fun BottomNavItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() }) {
+fun BottomNavItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() }
+    ) {
         Box(
             modifier = Modifier
                 .size(40.dp)
