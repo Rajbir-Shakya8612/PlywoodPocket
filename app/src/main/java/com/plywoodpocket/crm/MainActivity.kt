@@ -2,9 +2,11 @@ package com.plywoodpocket.crm
 
 import android.Manifest
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,49 +23,116 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.plywoodpocket.crm.components.InfiniteCardView
+import com.plywoodpocket.crm.screens.LoginScreen
+import com.plywoodpocket.crm.screens.RegisterScreen
 import com.plywoodpocket.crm.ui.theme.*
 import com.plywoodpocket.crm.utils.PermissionHandler
+import com.plywoodpocket.crm.viewmodel.AuthViewModel
+import com.plywoodpocket.crm.viewmodel.AuthState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
-    private var showPermissionDialog by mutableStateOf(false)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            MainScreen(this)
+        }
+    }
+}
 
-    private val permissionLauncher = registerForActivityResult(
+@Composable
+fun MainScreen(activity: MainActivity) {
+    val context = LocalContext.current
+    val authViewModel: AuthViewModel = viewModel(factory = com.plywoodpocket.crm.viewmodel.AuthViewModelFactory(context))
+    var showLogin by remember { mutableStateOf(!authViewModel.isLoggedIn()) }
+    var showRegister by remember { mutableStateOf(false) }
+    var showPermissionDialog by remember { mutableStateOf(false) }
+    val authState by authViewModel.authState.collectAsState()
+
+    val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val allGranted = permissions.entries.all { it.value }
+    ) { permissions: Map<String, Boolean> ->
+        val allGranted = permissions.values.all { it }
         if (!allGranted) {
             showPermissionDialog = true
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            LaunchedEffect(Unit) {
-                if (!PermissionHandler.hasRequiredPermissions(this@MainActivity)) {
-                    permissionLauncher.launch(arrayOf(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION,
-                        Manifest.permission.POST_NOTIFICATIONS
-                    ))
+    LaunchedEffect(Unit) {
+        if (!PermissionHandler.hasRequiredPermissions(context as android.app.Activity)) {
+            permissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.POST_NOTIFICATIONS
+                )
+            )
+        }
+    }
+
+    // Handle auth state changes
+    LaunchedEffect(authState) {
+        when (authState) {
+            is AuthState.Success -> {
+                Toast.makeText(context, (authState as AuthState.Success).message, Toast.LENGTH_SHORT).show()
+                if ((authState as AuthState.Success).message.contains("successful", ignoreCase = true)) {
+                    showLogin = false
+                    showRegister = false
                 }
             }
+            is AuthState.Error -> {
+                Toast.makeText(context, (authState as AuthState.Error).message, Toast.LENGTH_SHORT).show()
+            }
+            else -> {}
+        }
+    }
 
-            PlywoodPocketTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    DashboardScreen()
+    PlywoodPocketTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            when {
+                showLogin -> {
+                    LoginScreen(
+                        onLoginSuccess = { email, password ->
+                            authViewModel.login(email, password)
+                        },
+                        onNavigateToRegister = {
+                            showLogin = false
+                            showRegister = true
+                        }
+                    )
+                }
+                showRegister -> {
+                    RegisterScreen(
+                        onNavigateToLogin = {
+                            showRegister = false
+                            showLogin = true
+                        },
+                        onRegisterSuccess = {
+                            showRegister = false
+                            showLogin = false
+                        }
+                    )
+                }
+                else -> {
+                    DashboardScreen(
+                        onLogout = {
+                            authViewModel.logout()
+                            showLogin = true
+                        }
+                    )
                 }
             }
 
@@ -71,7 +140,7 @@ class MainActivity : ComponentActivity() {
                 PermissionHandler.PermissionRequestDialog(
                     onDismiss = { showPermissionDialog = false },
                     onSettingsClick = {
-                        PermissionHandler.openAppSettings(this@MainActivity)
+                        PermissionHandler.openAppSettings(context)
                         showPermissionDialog = false
                     }
                 )
@@ -81,7 +150,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun DashboardScreen() {
+fun DashboardScreen(onLogout: () -> Unit) {
     var selectedTab by remember { mutableStateOf(0) }
     var selectedIndex by remember { mutableStateOf(2) }
     var searchQuery by remember { mutableStateOf("") }
@@ -109,7 +178,8 @@ fun DashboardScreen() {
             selectedIndex = selectedIndex,
             setSelectedIndex = { selectedIndex = it },
             selectedTab = selectedTab,
-            setSelectedTab = { selectedTab = it }
+            setSelectedTab = { selectedTab = it },
+            onLogout = onLogout
         )
     }
 }
@@ -337,7 +407,8 @@ fun BottomNavBar(
     selectedIndex: Int,
     setSelectedIndex: (Int) -> Unit,
     selectedTab: Int,
-    setSelectedTab: (Int) -> Unit
+    setSelectedTab: (Int) -> Unit,
+    onLogout: () -> Unit
 ) {
     Surface(
         shadowElevation = 8.dp,
@@ -366,6 +437,7 @@ fun BottomNavBar(
             }
             BottomNavItem(Icons.Filled.Person, "Profile", selectedIndex == 4) {
                 setSelectedIndex(4)
+                onLogout()
             }
         }
     }
