@@ -96,7 +96,9 @@ fun DashboardScreen() {
             query = searchQuery,
             onQueryChange = { searchQuery = it }
         )
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
+        BankCard()
+        Spacer(modifier = Modifier.height(24.dp))
         InfiniteCardView()
         Spacer(modifier = Modifier.height(40.dp))
         TabRowSection(selectedTab) { selectedTab = it }
@@ -150,6 +152,39 @@ fun SearchBar(
                     .weight(1f)
                     .padding(start = 8.dp, end = 8.dp)
             )
+        }
+    }
+}
+
+@Composable
+fun BankCard() {
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 24.dp)
+            .fillMaxWidth()
+            .height(200.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(
+                brush = Brush.horizontalGradient(listOf(Orange, OrangeLight))
+            )
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text("ICICI Bank", color = White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("2300 1130 5224", color = White, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Account No.", color = White.copy(alpha = 0.8f), fontSize = 14.sp)
+                Spacer(modifier = Modifier.width(16.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(OrangeLight.copy(alpha = 0.7f))
+                        .padding(horizontal = 18.dp, vertical = 8.dp)
+                ) {
+                    Text("Show Balance", color = White, fontSize = 14.sp)
+                }
+            }
         }
     }
 }
