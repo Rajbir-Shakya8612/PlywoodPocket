@@ -2,6 +2,12 @@ package com.plywoodpocket.crm.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+val Orange = Color(0xFFFF8800)
+val OrangeLight = Color(0xFFFFA726)
+val White = Color(0xFFFFFFFF)
+val Black = Color(0xFF000000)
+val Gray = Color(0xFF888888)
+
 val Purple80 = Color(0xFFD0BCFF)
 val PurpleGrey80 = Color(0xFFCCC2DC)
 val Pink80 = Color(0xFFEFB8C8)
