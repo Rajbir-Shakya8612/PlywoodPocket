@@ -40,7 +40,7 @@ data class RegisteredUser(
     val id: Int,
     val name: String,
     val email: String,
-    val role: Role,
+    val role_id: Int,
     val brand_id: Int,
     val updated_at: String,
     val created_at: String

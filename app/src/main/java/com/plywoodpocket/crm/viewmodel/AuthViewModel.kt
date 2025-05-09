@@ -99,7 +99,7 @@ class AuthViewModel(context: Context) : ViewModel() {
                             registerResponse.user.id,
                             registerResponse.user.name,
                             registerResponse.user.email,
-                            registerResponse.user.role.name,
+                            registerResponse.user.role_id.toString(),
                             expiration
                         )
                         _authState.value = AuthState.Success("Registration successful")
