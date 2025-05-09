@@ -36,6 +36,23 @@ data class User(
     val role: Role
 )
 
+data class RegisteredUser(
+    val id: Int,
+    val name: String,
+    val email: String,
+    val role: Role,
+    val brand_id: Int,
+    val updated_at: String,
+    val created_at: String
+)
+
+
+data class RegisterResponse(
+    val message: String,
+    val user: RegisteredUser,
+    val token: String
+)
+
 data class Role(
     val id: Int,
     val name: String,

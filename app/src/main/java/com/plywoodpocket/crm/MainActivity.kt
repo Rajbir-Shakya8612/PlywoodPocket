@@ -141,7 +141,7 @@ fun MainScreen(activity: MainActivity) {
                         },
                         onRegisterSuccess = {
                             showRegister = false
-                            showLogin = false
+                            showLogin = true
                         }
                     )
                 }

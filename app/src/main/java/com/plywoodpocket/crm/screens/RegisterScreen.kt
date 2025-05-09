@@ -16,6 +16,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.plywoodpocket.crm.models.Role
+import com.plywoodpocket.crm.viewmodel.AuthState
 import com.plywoodpocket.crm.viewmodel.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)

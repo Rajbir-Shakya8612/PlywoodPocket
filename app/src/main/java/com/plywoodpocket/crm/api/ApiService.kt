@@ -17,7 +17,7 @@ interface ApiService {
 
     @Headers("Accept: application/json")
     @POST("api/register")
-    suspend fun register(@Body request: RegisterRequest): Response<LoginResponse>
+    suspend fun register(@Body request: RegisterRequest): Response<RegisterResponse>
 
     @Headers("Accept: application/json")
     @GET("api/roles")
