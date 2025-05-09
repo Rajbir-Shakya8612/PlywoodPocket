@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.plywoodpocket.crm.api.ApiClient
 import com.plywoodpocket.crm.models.LoginRequest
 import com.plywoodpocket.crm.models.RegisterRequest
+import com.plywoodpocket.crm.models.Role
 import com.plywoodpocket.crm.utils.TokenManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,18 +20,18 @@ sealed class AuthState {
 }
 
 class AuthViewModel(context: Context) : ViewModel() {
+
     private val tokenManager = TokenManager(context)
-    private val apiClient = ApiClient(tokenManager)
-    private val apiService = apiClient.apiService
+    private val apiService = ApiClient(tokenManager).apiService
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
 
-    private val _roles = MutableStateFlow<List<com.plywoodpocket.crm.models.Role>>(emptyList())
-    val roles: StateFlow<List<com.plywoodpocket.crm.models.Role>> = _roles
+    private val _roles = MutableStateFlow<List<Role>>(emptyList())
+    val roles: StateFlow<List<Role>> = _roles
 
-    private val _selectedRole = MutableStateFlow<com.plywoodpocket.crm.models.Role?>(null)
-    val selectedRole: StateFlow<com.plywoodpocket.crm.models.Role?> = _selectedRole
+    private val _selectedRole = MutableStateFlow<Role?>(null)
+    val selectedRole: StateFlow<Role?> = _selectedRole
 
     private val _isLoadingRoles = MutableStateFlow(false)
     val isLoadingRoles: StateFlow<Boolean> = _isLoadingRoles
@@ -44,21 +45,26 @@ class AuthViewModel(context: Context) : ViewModel() {
             try {
                 val response = apiService.login(LoginRequest(email, password))
                 if (response.isSuccessful) {
-                    response.body()?.let { loginResponse ->
+                    val loginResponse = response.body()
+                    if (loginResponse != null) {
+                        val expiration = System.currentTimeMillis() + 24 * 60 * 60 * 1000 // 24 hrs
                         tokenManager.saveAuthData(
                             loginResponse.token,
                             loginResponse.user.id,
                             loginResponse.user.name,
                             loginResponse.user.email,
-                            loginResponse.user.role.name
+                            loginResponse.user.role.name,
+                            expiration
                         )
                         _authState.value = AuthState.Success("Login successful")
+                    } else {
+                        _authState.value = AuthState.Error("Login failed: Empty response")
                     }
                 } else {
                     _authState.value = AuthState.Error("Login failed: ${response.message()}")
                 }
             } catch (e: Exception) {
-                _authState.value = AuthState.Error("Login failed: ${e.message}")
+                _authState.value = AuthState.Error("Login failed: ${e.localizedMessage ?: "Unknown error"}")
             }
         }
     }
@@ -74,32 +80,37 @@ class AuthViewModel(context: Context) : ViewModel() {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                val response = apiService.register(
-                    RegisterRequest(
-                        name = name,
-                        email = email,
-                        password = password,
-                        password_confirmation = confirmPassword,
-                        role_id = selectedRole,
-                        brand_passkey = brandPasskey
-                    )
+                val request = RegisterRequest(
+                    name = name,
+                    email = email,
+                    password = password,
+                    password_confirmation = confirmPassword,
+                    role_id = selectedRole,
+                    passkey = brandPasskey
                 )
+
+                val response = apiService.register(request)
                 if (response.isSuccessful) {
-                    response.body()?.let { loginResponse ->
+                    val registerResponse = response.body()
+                    if (registerResponse != null) {
+                        val expiration = System.currentTimeMillis() + 24 * 60 * 60 * 1000
                         tokenManager.saveAuthData(
-                            loginResponse.token,
-                            loginResponse.user.id,
-                            loginResponse.user.name,
-                            loginResponse.user.email,
-                            loginResponse.user.role.name
+                            registerResponse.token,
+                            registerResponse.user.id,
+                            registerResponse.user.name,
+                            registerResponse.user.email,
+                            registerResponse.user.role.name,
+                            expiration
                         )
                         _authState.value = AuthState.Success("Registration successful")
+                    } else {
+                        _authState.value = AuthState.Error("Registration failed: Empty response")
                     }
                 } else {
                     _authState.value = AuthState.Error("Registration failed: ${response.message()}")
                 }
             } catch (e: Exception) {
-                _authState.value = AuthState.Error("Registration failed: ${e.message}")
+                _authState.value = AuthState.Error("Registration failed: ${e.localizedMessage ?: "Unknown error"}")
             }
         }
     }
@@ -116,7 +127,7 @@ class AuthViewModel(context: Context) : ViewModel() {
                     _authState.value = AuthState.Error("Logout failed: ${response.message()}")
                 }
             } catch (e: Exception) {
-                _authState.value = AuthState.Error("Logout failed: ${e.message}")
+                _authState.value = AuthState.Error("Logout failed: ${e.localizedMessage ?: "Unknown error"}")
             }
         }
     }
@@ -128,14 +139,16 @@ class AuthViewModel(context: Context) : ViewModel() {
             try {
                 val response = apiService.getRoles()
                 if (response.isSuccessful) {
-                    response.body()?.let { rolesList ->
-                        _roles.value = rolesList
+                    response.body()?.let {
+                        _roles.value = it
+                    } ?: run {
+                        _rolesError.value = "Roles list is empty"
                     }
                 } else {
                     _rolesError.value = "Failed to fetch roles: ${response.message()}"
                 }
             } catch (e: Exception) {
-                _rolesError.value = "Failed to fetch roles: ${e.message}"
+                _rolesError.value = "Failed to fetch roles: ${e.localizedMessage ?: "Unknown error"}"
             } finally {
                 _isLoadingRoles.value = false
             }
@@ -147,4 +160,4 @@ class AuthViewModel(context: Context) : ViewModel() {
     }
 
     fun isLoggedIn(): Boolean = tokenManager.isLoggedIn()
-} 
+}

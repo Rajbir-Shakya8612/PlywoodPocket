@@ -29,6 +29,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.plywoodpocket.crm.api.ApiService
+import com.plywoodpocket.crm.api.ApiClient
+import com.plywoodpocket.crm.utils.TokenManager
 import com.plywoodpocket.crm.components.InfiniteCardView
 import com.plywoodpocket.crm.screens.LoginScreen
 import com.plywoodpocket.crm.screens.RegisterScreen
@@ -57,6 +60,7 @@ fun MainScreen(activity: MainActivity) {
     var showLogin by remember { mutableStateOf(!authViewModel.isLoggedIn()) }
     var showRegister by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
+    var showAttendanceScreen by remember { mutableStateOf(false) }
     val authState by authViewModel.authState.collectAsState()
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -103,6 +107,21 @@ fun MainScreen(activity: MainActivity) {
             color = MaterialTheme.colorScheme.background
         ) {
             when {
+                showAttendanceScreen -> {
+                    val apiClient = ApiClient(TokenManager(context))
+
+                    val attendanceViewModel: com.plywoodpocket.crm.viewmodel.AttendanceViewModel = viewModel(
+                        factory = com.plywoodpocket.crm.viewmodel.AttendanceViewModelFactory(
+                            context.applicationContext as android.app.Application,
+                            com.plywoodpocket.crm.utils.TokenManager(context),
+                            apiClient.apiService
+                        )
+                    )
+                    com.plywoodpocket.crm.screens.AttendanceScreen(
+                        viewModel = attendanceViewModel,
+                        onBack = { showAttendanceScreen = false }
+                    )
+                }
                 showLogin -> {
                     LoginScreen(
                         onLoginSuccess = { email, password ->
@@ -131,7 +150,8 @@ fun MainScreen(activity: MainActivity) {
                         onLogout = {
                             authViewModel.logout()
                             showLogin = true
-                        }
+                        },
+                        onAttendanceClick = { showAttendanceScreen = true }
                     )
                 }
             }
@@ -150,7 +170,7 @@ fun MainScreen(activity: MainActivity) {
 }
 
 @Composable
-fun DashboardScreen(onLogout: () -> Unit) {
+fun DashboardScreen(onLogout: () -> Unit, onAttendanceClick: () -> Unit) {
     var selectedTab by remember { mutableStateOf(0) }
     var selectedIndex by remember { mutableStateOf(2) }
     var searchQuery by remember { mutableStateOf("") }
@@ -172,7 +192,7 @@ fun DashboardScreen(onLogout: () -> Unit) {
         Spacer(modifier = Modifier.height(40.dp))
         TabRowSection(selectedTab) { selectedTab = it }
         Spacer(modifier = Modifier.height(32.dp))
-        GridMenu(searchQuery)
+        GridMenu(searchQuery, onAttendanceClick)
         Spacer(modifier = Modifier.weight(1f))
         BottomNavBar(
             selectedIndex = selectedIndex,
@@ -296,7 +316,7 @@ fun TabItem(title: String, selected: Boolean, modifier: Modifier = Modifier, onC
 }
 
 @Composable
-fun GridMenu(searchQuery: String) {
+fun GridMenu(searchQuery: String, onAttendanceClick: () -> Unit) {
     val homeItems = listOf(
         Triple("Attendance", android.R.drawable.ic_menu_my_calendar, Color(0xFF1976D2)),
         Triple("Plans", android.R.drawable.ic_menu_compass, Color(0xFF1976D2)),
@@ -327,21 +347,22 @@ fun GridMenu(searchQuery: String) {
                 modifier = Modifier.width(100.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                homeItems.forEach { MenuItem(it.first, it.second, it.third) }
+                MenuItem("Attendance", android.R.drawable.ic_menu_my_calendar, Color(0xFF1976D2), onClick = onAttendanceClick)
+                homeItems.drop(1).forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
             }
             Spacer(modifier = Modifier.width(24.dp))
             Column(
                 modifier = Modifier.width(100.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                analyticsItems.forEach { MenuItem(it.first, it.second, it.third) }
+                analyticsItems.forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
             }
             Spacer(modifier = Modifier.width(24.dp))
             Column(
                 modifier = Modifier.width(100.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                performanceItems.forEach { MenuItem(it.first, it.second, it.third) }
+                performanceItems.forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
             }
         }
     } else {
@@ -361,19 +382,19 @@ fun GridMenu(searchQuery: String) {
                     .padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.Center
             ) {
-                filteredItems.forEach { MenuItem(it.first, it.second, it.third) }
+                filteredItems.forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
             }
         }
     }
 }
 
 @Composable
-fun MenuItem(title: String, iconRes: Int, textColor: Color) {
+fun MenuItem(title: String, iconRes: Int, textColor: Color, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .width(90.dp)
             .padding(vertical = 15.dp)
-            .clickable { },
+            .clickable { onClick() },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(

@@ -1,5 +1,7 @@
 package com.plywoodpocket.crm.api
 
+
+import com.plywoodpocket.crm.models.LoginResponse
 import com.plywoodpocket.crm.models.*
 import retrofit2.Response
 import retrofit2.http.*
@@ -20,4 +22,21 @@ interface ApiService {
     @Headers("Accept: application/json")
     @GET("api/roles")
     suspend fun getRoles(): Response<List<Role>>
+
+    @GET("api/salesperson/attendance/status")
+    suspend fun getAttendanceStatus(): Response<AttendanceStatusResponse>
+
+    @POST("api/attendance/checkin")
+    suspend fun checkIn(@Body request: CheckInRequest): Response<AttendanceStatusResponse>
+
+    @POST("api/attendance/checkout")
+    suspend fun checkOut(@Body request: CheckOutRequest): Response<AttendanceStatusResponse>
+
+    @POST("api/location/tracks")
+    suspend fun trackLocation(@Body locationData: LocationData): Response<Any>
+
+
+    @Headers("Accept: application/json")
+    @GET("api/salesperson/attendance/history")
+    suspend fun getAttendanceHistory(): Response<List<AttendanceHistoryItem>>
 } 
