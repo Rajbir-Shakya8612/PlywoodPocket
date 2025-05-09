@@ -89,9 +89,13 @@ fun MainScreen(activity: MainActivity) {
         when (authState) {
             is AuthState.Success -> {
                 Toast.makeText(context, (authState as AuthState.Success).message, Toast.LENGTH_SHORT).show()
-                if ((authState as AuthState.Success).message.contains("successful", ignoreCase = true)) {
+                val msg = (authState as AuthState.Success).message
+                if (msg.contains("Login successful", ignoreCase = true)) {
                     showLogin = false
                     showRegister = false
+                } else if (msg.contains("Registration successful", ignoreCase = true)) {
+                    showRegister = false
+                    showLogin = true
                 }
             }
             is AuthState.Error -> {
