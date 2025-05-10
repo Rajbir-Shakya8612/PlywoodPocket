@@ -56,6 +56,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
 
     // Compose UI
     implementation("androidx.compose.ui:ui")
@@ -73,9 +74,6 @@ dependencies {
     // Accompanist (for permissions)
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
 
-    // Location Services
-    implementation("com.google.android.gms:play-services-location:21.1.0")
-
     // Retrofit & Gson (Networking)
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
@@ -86,10 +84,19 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 
     // Jetpack WorkManager
+    implementation("androidx.work:work-runtime:2.9.0")
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
     // AndroidX Security (Encrypted SharedPref etc.)
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // Location
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+
+
+
+    // CalendarView (if using XML)
+    implementation("com.prolificinteractive:material-calendarview:1.4.3")
 
 
     // Testing
