@@ -102,4 +102,7 @@ dependencies {
     // Location
     implementation("com.google.android.gms:play-services-location:21.0.1")
 
+    // Calendar Compose Library
+    implementation("com.kizitonwose.calendar:compose:2.4.0")
+
 }
