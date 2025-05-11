@@ -51,11 +51,22 @@ import androidx.compose.material.icons.filled.Chat
 import androidx.compose.ui.text.input.TextFieldValue
 import java.text.SimpleDateFormat
 import java.util.Locale
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.compose.runtime.LaunchedEffect
+import com.plywoodpocket.crm.MainActivity
+import com.plywoodpocket.crm.api.ApiClient
+import com.plywoodpocket.crm.utils.TokenManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LeadsScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    navController: NavController? = null
 ) {
     val context = LocalContext.current
     val viewModel: LeadsViewModel =
@@ -448,5 +459,167 @@ fun LeadCardWhite(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun AppNavHost(activity: MainActivity) {
+    val navController = rememberNavController()
+    val context = LocalContext.current
+    // Handle notification intent
+    LaunchedEffect(Unit) {
+        val intent = activity.intent
+        if (intent?.getBooleanExtra("navigate_to_followup_detail", false) == true) {
+            val leadId = intent.getIntExtra("lead_id", -1)
+            if (leadId != -1) {
+                navController.navigate("followup_detail/$leadId")
+            }
+            // Clear the intent so it doesn't trigger again
+            intent.removeExtra("navigate_to_followup_detail")
+            intent.removeExtra("lead_id")
+        }
+    }
+    NavHost(navController, startDestination = "leads") {
+        composable("leads") { LeadsScreen(onBack = { activity.finish() }, navController = navController) }
+        composable("followup_detail/{leadId}") { backStackEntry ->
+            val leadId = backStackEntry.arguments?.getString("leadId")?.toIntOrNull()
+            if (leadId != null) {
+                FollowUpDetailScreen(leadId = leadId, navController = navController)
+            }
+        }
+    }
+}
+
+@Composable
+fun FollowUpDetailScreen(leadId: Int, navController: NavController) {
+    val context = LocalContext.current
+    var lead by remember { mutableStateOf<com.plywoodpocket.crm.models.Lead?>(null) }
+    var statuses by remember { mutableStateOf<List<com.plywoodpocket.crm.models.LeadStatus>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var showScheduleCard by remember { mutableStateOf(false) }
+    var scheduleDate by remember { mutableStateOf("") }
+    var scheduleNotes by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(leadId) {
+        loading = true
+        error = null
+        try {
+            val api = ApiClient(TokenManager(context)).apiService
+            val response = withContext(Dispatchers.IO) { api.getLead(leadId) }
+            if (response.isSuccessful) {
+                lead = response.body()?.lead
+                statuses = response.body()?.lead_statuses ?: emptyList()
+            } else {
+                error = response.message()
+            }
+        } catch (e: Exception) {
+            error = e.localizedMessage
+        }
+        loading = false
+    }
+
+    if (loading) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        return
+    }
+    if (error != null) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(error!!, color = Color.Red) }
+        return
+    }
+    lead?.let { l ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .background(White)
+                .padding(16.dp)
+        ) {
+            Text("Lead Details", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.Gray)
+            Spacer(Modifier.height(8.dp))
+            Text("Name: ${l.name}", color = Color.Black)
+            Text("Phone: ${l.phone}", color = Color.Black)
+            Text("Email: ${l.email}", color = Color.Black)
+            Text("Address: ${l.address}", color = Color.Black)
+            Text("Status: ${l.status?.name ?: "-"}", color = Color.Black)
+            Text("Follow-up: ${l.follow_up_date?.let { formatDate(it) } ?: "-"}", color = Color.Black)
+            if (!l.notes.isNullOrBlank()) Text("Notes: ${l.notes}", color = Color.Black)
+            if (!l.description.isNullOrBlank()) Text("Description: ${l.description}", color = Color.Black)
+            if (!l.company.isNullOrBlank()) Text("Company: ${l.company}", color = Color.Black)
+            if (!l.additional_info.isNullOrBlank()) Text("Additional Info: ${l.additional_info}", color = Color.Black)
+            if (!l.source.isNullOrBlank()) Text("Source: ${l.source}", color = Color.Black)
+            Spacer(Modifier.height(16.dp))
+            // Schedule Follow Up Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color(0xFF2196F3)),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Schedule Follow Up", fontWeight = FontWeight.Bold, color = Color(0xFF2196F3), fontSize = 18.sp)
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = scheduleDate,
+                        onValueChange = { scheduleDate = it },
+                        label = { Text("Date & Time (dd-MM-yyyy HH:mm)*") },
+                        trailingIcon = {
+                            IconButton(onClick = {
+                                // Date picker logic (for simplicity, just let user type for now)
+                            }) {
+                                Icon(Icons.Default.DateRange, contentDescription = "Pick date")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = scheduleNotes,
+                        onValueChange = { scheduleNotes = it },
+                        label = { Text("Notes") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            // Call schedule follow up API
+                            scope.launch {
+                                val api = ApiClient(TokenManager(context)).apiService
+                                val req = com.plywoodpocket.crm.models.FollowUpRequest(
+                                    next_follow_up = convertToApiDate(scheduleDate),
+                                    notes = scheduleNotes
+                                )
+                                val resp = withContext(Dispatchers.IO) { api.scheduleFollowUp(leadId, req) }
+                                if (resp.isSuccessful) {
+                                    // Refresh lead details
+                                    val response = withContext(Dispatchers.IO) { api.getLead(leadId) }
+                                    if (response.isSuccessful) {
+                                        lead = response.body()?.lead
+                                    }
+                                    scheduleDate = ""
+                                    scheduleNotes = ""
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF90A4FF))
+                    ) {
+                        Text("Schedule Follow Up")
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun convertToApiDate(dateStr: String): String {
+    // Convert dd-MM-yyyy HH:mm to yyyy-MM-dd'T'HH:mm
+    return try {
+        val input = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault())
+        val output = SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault())
+        output.format(input.parse(dateStr) ?: return dateStr)
+    } catch (e: Exception) {
+        dateStr
     }
 }

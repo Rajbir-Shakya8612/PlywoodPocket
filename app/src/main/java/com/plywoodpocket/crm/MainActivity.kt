@@ -43,13 +43,17 @@ import com.plywoodpocket.crm.viewmodel.AuthState
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.plywoodpocket.crm.utils.WorkManagerScheduler
+import com.plywoodpocket.crm.screens.AppNavHost
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Schedule follow-up reminders
+        WorkManagerScheduler.scheduleFollowUpReminders(this)
         setContent {
-            MainScreen(this)
+            AppNavHost(this)
         }
     }
 }

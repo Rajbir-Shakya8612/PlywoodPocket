@@ -26,4 +26,18 @@ object WorkManagerScheduler {
     fun stopLocationTracking(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(LOCATION_TRACKING_WORK)
     }
+
+    fun scheduleFollowUpReminders(context: Context) {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiresBatteryNotLow(true)
+            .build()
+
+        val workRequest = PeriodicWorkRequestBuilder<FollowUpReminderWorker>(15, TimeUnit.MINUTES).setConstraints(constraints).build()
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            "FollowUpReminder",
+            ExistingPeriodicWorkPolicy.KEEP,
+            workRequest
+        )
+    }
 }

@@ -48,7 +48,8 @@ data class LeadChartData(
 data class LeadResponse(
     val success: Boolean,
     val message: String?,
-    val lead: Lead?
+    val lead: Lead?,
+    val lead_statuses: List<LeadStatus>? = null
 )
 
 data class LeadRequest(
