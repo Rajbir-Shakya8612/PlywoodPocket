@@ -5,6 +5,8 @@ import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -44,11 +46,24 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color(0xFFFFA726))
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        TitleText("Attendance", 24)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { onBack() }) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back"
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            TitleText("Attendance", 24)
+        }
         TitleText(currentDate, 16, Color.Gray)
 
         viewModel.errorMessage?.let {
@@ -207,10 +222,7 @@ fun CalendarCard() {
                 modifier = Modifier
                     .fillMaxWidth(),
                 attendanceData = attendanceData,
-                onDayClick = { clickedDate ->
-                    // You can add your logic here when a day is clicked
-                    println("Clicked date: $clickedDate")
-                }
+                onDayClick = { /* Do nothing or show a toast/snackbar if needed */ }
             )
         }
     }
