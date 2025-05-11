@@ -117,46 +117,92 @@ fun MainScreen(activity: MainActivity) {
     PlywoodPocketTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
+            color = Color.Transparent
         ) {
             when {
-                showAttendanceScreen -> {
-                    val apiClient = ApiClient(TokenManager(context))
-
-                    val attendanceViewModel: com.plywoodpocket.crm.viewmodel.AttendanceViewModel = viewModel(
-                        factory = com.plywoodpocket.crm.viewmodel.AttendanceViewModelFactory(
-                            context.applicationContext as android.app.Application,
-                            com.plywoodpocket.crm.utils.TokenManager(context),
-                            apiClient.apiService
+                showAttendanceScreen || showLogin || showRegister -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black)
+                    ) {
+                        Spacer(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(32.dp)
+                                .background(Color.Black)
                         )
-                    )
-                    com.plywoodpocket.crm.screens.AttendanceScreen(
-                        viewModel = attendanceViewModel,
-                        onBack = { showAttendanceScreen = false }
-                    )
-                }
-                showLogin -> {
-                    LoginScreen(
-                        onLoginSuccess = { email, password ->
-                            authViewModel.login(email, password)
-                        },
-                        onNavigateToRegister = {
-                            showLogin = false
-                            showRegister = true
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .background(Color(0xFFFFA726))
+                        ) {
+                            when {
+                                showAttendanceScreen -> {
+                                    val apiClient = ApiClient(TokenManager(context))
+                                    val attendanceViewModel: com.plywoodpocket.crm.viewmodel.AttendanceViewModel = viewModel(
+                                        factory = com.plywoodpocket.crm.viewmodel.AttendanceViewModelFactory(
+                                            context.applicationContext as android.app.Application,
+                                            com.plywoodpocket.crm.utils.TokenManager(context),
+                                            apiClient.apiService
+                                        )
+                                    )
+                                    com.plywoodpocket.crm.screens.AttendanceScreen(
+                                        viewModel = attendanceViewModel,
+                                        onBack = { showAttendanceScreen = false }
+                                    )
+                                }
+                                showLogin -> {
+                                    LoginScreen(
+                                        onLoginSuccess = { email, password ->
+                                            authViewModel.login(email, password)
+                                        },
+                                        onNavigateToRegister = {
+                                            showLogin = false
+                                            showRegister = true
+                                        }
+                                    )
+                                }
+                                showRegister -> {
+                                    RegisterScreen(
+                                        onNavigateToLogin = {
+                                            showRegister = false
+                                            showLogin = true
+                                        },
+                                        onRegisterSuccess = {
+                                            showRegister = false
+                                            showLogin = true
+                                        }
+                                    )
+                                }
+                            }
+                            if (showPermissionDialog) {
+                                PermissionHandler.PermissionRequestDialog(
+                                    onDismiss = { showPermissionDialog = false },
+                                    onSettingsClick = {
+                                        PermissionHandler.openAppSettings(context)
+                                        showPermissionDialog = false
+                                    }
+                                )
+                            }
+                            if (showLocationDialog) {
+                                LocationServiceHelper.LocationServiceDialog(
+                                    onDismiss = { showLocationDialog = false },
+                                    onSettingsClick = {
+                                        LocationServiceHelper.openLocationSettings(context)
+                                        showLocationDialog = false
+                                    }
+                                )
+                            }
                         }
-                    )
-                }
-                showRegister -> {
-                    RegisterScreen(
-                        onNavigateToLogin = {
-                            showRegister = false
-                            showLogin = true
-                        },
-                        onRegisterSuccess = {
-                            showRegister = false
-                            showLogin = true
-                        }
-                    )
+                        Spacer(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(36.dp)
+                                .background(Color.Black)
+                        )
+                    }
                 }
                 else -> {
                     DashboardScreen(
@@ -167,26 +213,6 @@ fun MainScreen(activity: MainActivity) {
                         onAttendanceClick = { showAttendanceScreen = true }
                     )
                 }
-            }
-
-            if (showPermissionDialog) {
-                PermissionHandler.PermissionRequestDialog(
-                    onDismiss = { showPermissionDialog = false },
-                    onSettingsClick = {
-                        PermissionHandler.openAppSettings(context)
-                        showPermissionDialog = false
-                    }
-                )
-            }
-
-            if (showLocationDialog) {
-                LocationServiceHelper.LocationServiceDialog(
-                    onDismiss = { showLocationDialog = false },
-                    onSettingsClick = {
-                        LocationServiceHelper.openLocationSettings(context)
-                        showLocationDialog = false
-                    }
-                )
             }
         }
     }
@@ -222,7 +248,8 @@ fun DashboardScreen(onLogout: () -> Unit, onAttendanceClick: () -> Unit) {
             setSelectedIndex = { selectedIndex = it },
             selectedTab = selectedTab,
             setSelectedTab = { selectedTab = it },
-            onLogout = onLogout
+            onLogout = onLogout,
+            modifier = Modifier.navigationBarsPadding()
         )
     }
 }
@@ -452,11 +479,13 @@ fun BottomNavBar(
     setSelectedIndex: (Int) -> Unit,
     selectedTab: Int,
     setSelectedTab: (Int) -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         shadowElevation = 8.dp,
-        color = White
+        color = White,
+        modifier = modifier
     ) {
         Row(
             modifier = Modifier
