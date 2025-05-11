@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +24,7 @@ import com.plywoodpocket.crm.utils.LocationServiceHelper
 import com.plywoodpocket.crm.ui.ModernCalendar
 import java.time.LocalDate
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -69,14 +71,59 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
             Spacer(modifier = Modifier.width(8.dp))
             TitleText("Attendance", 24)
         }
-        TitleText(currentDate, 16, Color.Gray)
-
-        viewModel.errorMessage?.let {
-            ErrorCard(it)
+        // Modern Date Card
+        Card(
+            modifier = Modifier
+                .padding(top = 4.dp, bottom = 4.dp)
+                .wrapContentWidth()
+                .align(Alignment.CenterHorizontally),
+            shape = RoundedCornerShape(50),
+            elevation = CardDefaults.cardElevation(6.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarToday,
+                    contentDescription = "Date",
+                    tint = Color(0xFFFFA726),
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = currentDate,
+                    fontSize = 16.sp,
+                    color = Color(0xFF757575),
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
-
-        StatusCard(status, viewModel, context)
-
+        // Modern Status Card
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            shape = RoundedCornerShape(18.dp),
+            elevation = CardDefaults.cardElevation(12.dp),
+            border = BorderStroke(1.dp, Color(0x1A000000)),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(22.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                viewModel.errorMessage?.let {
+                    ErrorCard(it)
+                }
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    StatusCard(status, viewModel, context)
+                }
+            }
+        }
         CalendarCard()
     }
 }
