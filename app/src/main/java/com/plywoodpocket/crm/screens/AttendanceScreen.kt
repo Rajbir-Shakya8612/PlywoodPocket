@@ -205,8 +205,7 @@ fun CalendarCard() {
             // Modern calendar view
             ModernCalendar(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(360.dp),
+                    .fillMaxWidth(),
                 attendanceData = attendanceData,
                 onDayClick = { clickedDate ->
                     // You can add your logic here when a day is clicked

@@ -25,6 +25,8 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.*
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 @Composable
 fun ModernCalendar(
@@ -43,7 +45,7 @@ fun ModernCalendar(
 
     val coroutineScope = rememberCoroutineScope()
 
-    Column(modifier = modifier.padding(8.dp)) {
+    Column(modifier = modifier.padding(8.dp).verticalScroll(rememberScrollState())) {
         // Header: Month-Year + Arrows
         Row(
             modifier = Modifier
