@@ -96,10 +96,12 @@ fun LeadsScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Column(modifier = Modifier
-            .padding(padding)
-            .fillMaxSize()
-            .background(White)) {
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .background(White)
+        ) {
             // Search bar sabse upar
             OutlinedTextField(
                 value = searchQuery,
@@ -111,7 +113,11 @@ fun LeadsScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 singleLine = true,
                 leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = "Search", tint = Color(0xFF2196F3))
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = Color(0xFF2196F3)
+                    )
                 }
             )
             Spacer(Modifier.height(8.dp))
@@ -121,11 +127,13 @@ fun LeadsScreen(
                         CircularProgressIndicator()
                     }
                 }
+
                 is LeadsUiState.Error -> {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text((uiState as LeadsUiState.Error).message, color = Color.Red)
                     }
                 }
+
                 is LeadsUiState.Success -> {
                     val leads = (uiState as LeadsUiState.Success).leads
                     val statuses = (uiState as LeadsUiState.Success).statuses ?: emptyList()
@@ -133,14 +141,15 @@ fun LeadsScreen(
                     // Show each status as a colored card, with its leads inside as white cards
                     LazyRow(Modifier.fillMaxSize()) {
                         items(statuses) { status ->
-                            val statusLeads = leads.filter { it.status_id == status.id &&
-                                (it.name.contains(searchQuery.text, true) ||
-                                 it.phone.contains(searchQuery.text, true) ||
-                                 it.email.contains(searchQuery.text, true))
+                            val statusLeads = leads.filter {
+                                it.status_id == status.id &&
+                                        (it.name.contains(searchQuery.text, true) ||
+                                                it.phone.contains(searchQuery.text, true) ||
+                                                it.email.contains(searchQuery.text, true))
                             }
                             Card(
                                 modifier = Modifier
-                                    .width(320.dp)
+                                    .width(340.dp)
                                     .padding(horizontal = 12.dp, vertical = 8.dp),
                                 shape = RoundedCornerShape(20.dp),
                                 colors = CardDefaults.cardColors(
@@ -164,12 +173,12 @@ fun LeadsScreen(
                                         Box(
                                             Modifier
                                                 .clip(CircleShape)
-                                                .background(Color(0xFFFF9800))
+                                                .background(Color.White)
                                                 .padding(horizontal = 8.dp, vertical = 2.dp)
                                         ) {
                                             Text(
                                                 statusLeads.size.toString(),
-                                                color = Color.White,
+                                                color = Color(android.graphics.Color.parseColor(status.color)),
                                                 fontWeight = FontWeight.Bold
                                             )
                                         }
@@ -178,53 +187,79 @@ fun LeadsScreen(
                                             defaultStatusForNewLead = status
                                             showForm = true
                                         }) {
-                                            Icon(Icons.Default.Add, contentDescription = "Add Lead", tint = Color(0xFF2196F3))
+                                            Icon(
+                                                Icons.Default.Add,
+                                                contentDescription = "Add Lead",
+                                                tint = Color(0xFFFFFFFF)
+                                            )
                                         }
                                     }
-                                    if (statusLeads.isEmpty()) {
-                                        Text("No leads", color = Color.Gray, modifier = Modifier.padding(8.dp))
-                                    } else {
-                                        statusLeads.forEach { lead ->
-                                            LeadCardWhite(
-                                                lead = lead,
-                                                onEdit = {
-                                                    editingLead = lead
-                                                    defaultStatusForNewLead = lead.status
-                                                    showForm = true
-                                                },
-                                                onCall = {
-                                                    val intent = Intent(
-                                                        Intent.ACTION_DIAL,
-                                                        Uri.parse("tel:${lead.phone}")
-                                                    )
-                                                    context.startActivity(intent)
-                                                },
-                                                onWhatsApp = {
-                                                    val uri = Uri.parse("https://wa.me/${lead.phone}")
-                                                    val intent = Intent(Intent.ACTION_VIEW, uri)
-                                                    context.startActivity(intent)
-                                                },
-                                                onDelete = {
-                                                    viewModel.deleteLead(
-                                                        lead.id ?: return@LeadCardWhite
-                                                    ) { success, msg ->
-                                                        scope.launch { snackbarHostState.showSnackbar(msg) }
-                                                    }
-                                                },
-                                                onLocation = {
-                                                    lead.latitude?.let { lat ->
-                                                        lead.longitude?.let { lng ->
-                                                            val uri =
-                                                                Uri.parse("geo:$lat,$lng?q=$lat,$lng(${lead.address ?: "Lead Location"})")
-                                                            val intent = Intent(Intent.ACTION_VIEW, uri)
-                                                            context.startActivity(intent)
-                                                        }
-                                                    }
-                                                },
-                                                onDetails = {
-                                                    showDetailsForLead = lead
-                                                }
+                                    // Scrollable leads list
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f, fill = false)
+                                            .verticalScroll(rememberScrollState())
+                                    ) {
+                                        if (statusLeads.isEmpty()) {
+                                            Text(
+                                                "No leads",
+                                                color = Color.Gray,
+                                                modifier = Modifier.padding(8.dp)
                                             )
+                                        } else {
+                                            Column {
+                                                statusLeads.forEach { lead ->
+                                                    LeadCardWhite(
+                                                        lead = lead,
+                                                        onEdit = {
+                                                            editingLead = lead
+                                                            defaultStatusForNewLead = lead.status
+                                                            showForm = true
+                                                        },
+                                                        onCall = {
+                                                            val intent = Intent(
+                                                                Intent.ACTION_DIAL,
+                                                                Uri.parse("tel:${lead.phone}")
+                                                            )
+                                                            context.startActivity(intent)
+                                                        },
+                                                        onWhatsApp = {
+                                                            val uri =
+                                                                Uri.parse("https://wa.me/${lead.phone}")
+                                                            val intent =
+                                                                Intent(Intent.ACTION_VIEW, uri)
+                                                            context.startActivity(intent)
+                                                        },
+                                                        onDelete = {
+                                                            viewModel.deleteLead(
+                                                                lead.id ?: return@LeadCardWhite
+                                                            ) { success, msg ->
+                                                                scope.launch {
+                                                                    snackbarHostState.showSnackbar(
+                                                                        msg
+                                                                    )
+                                                                }
+                                                            }
+                                                        },
+                                                        onLocation = {
+                                                            lead.latitude?.let { lat ->
+                                                                lead.longitude?.let { lng ->
+                                                                    val uri =
+                                                                        Uri.parse("geo:$lat,$lng?q=$lat,$lng(${lead.address ?: "Lead Location"})")
+                                                                    val intent = Intent(
+                                                                        Intent.ACTION_VIEW,
+                                                                        uri
+                                                                    )
+                                                                    context.startActivity(intent)
+                                                                }
+                                                            }
+                                                        },
+                                                        onDetails = {
+                                                            showDetailsForLead = lead
+                                                        }
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -318,51 +353,95 @@ fun LeadCardWhite(
         Column(modifier = Modifier.padding(16.dp)) {
             Text(lead.name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.Black)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Phone, contentDescription = null, tint = Color(0xFF4CAF50), modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.Default.Phone,
+                    contentDescription = null,
+                    tint = Color(0xFF4CAF50),
+                    modifier = Modifier.size(18.dp)
+                )
                 Spacer(Modifier.width(4.dp))
                 Text(lead.phone, color = Color.Gray, fontSize = 15.sp)
             }
             if (!lead.email.isNullOrBlank()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Email, contentDescription = null, tint = Color(0xFF2196F3), modifier = Modifier.size(18.dp))
+                    Icon(
+                        Icons.Default.Email,
+                        contentDescription = null,
+                        tint = Color(0xFF2196F3),
+                        modifier = Modifier.size(18.dp)
+                    )
                     Spacer(Modifier.width(4.dp))
                     Text(lead.email, color = Color.Gray, fontSize = 15.sp)
                 }
             }
             if (!lead.company.isNullOrBlank()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Home, contentDescription = null, tint = Color(0xFFFF5722), modifier = Modifier.size(18.dp))
+                    Icon(
+                        Icons.Default.Home,
+                        contentDescription = null,
+                        tint = Color(0xFFFF5722),
+                        modifier = Modifier.size(18.dp)
+                    )
                     Spacer(Modifier.width(4.dp))
                     Text(lead.company ?: "", color = Color.Gray, fontSize = 15.sp)
                 }
             }
             if (!lead.follow_up_date.isNullOrBlank()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.DateRange, contentDescription = null, tint = Color(0xFFF44336), modifier = Modifier.size(18.dp))
+                    Icon(
+                        Icons.Default.DateRange,
+                        contentDescription = null,
+                        tint = Color(0xFFF44336),
+                        modifier = Modifier.size(18.dp)
+                    )
                     Spacer(Modifier.width(4.dp))
-                    Text("Follow-up: ${formatDate(lead.follow_up_date)}", color = Color.Gray, fontSize = 15.sp)
+                    Text(
+                        "Follow-up: ${formatDate(lead.follow_up_date)}",
+                        color = Color.Gray,
+                        fontSize = 15.sp
+                    )
                 }
             }
             // Action icons row
-            Row(modifier = Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 IconButton(onClick = onCall) {
                     Icon(Icons.Default.Phone, contentDescription = "Call", tint = Color(0xFF4CAF50))
                 }
                 IconButton(onClick = onWhatsApp) {
-                    Icon(Icons.Default.Chat, contentDescription = "WhatsApp", tint = Color(0xFF25D366))
+                    Icon(
+                        Icons.Default.Chat,
+                        contentDescription = "WhatsApp",
+                        tint = Color(0xFF25D366)
+                    )
                 }
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color(0xFF2196F3))
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFF44336))
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = Color(0xFFF44336)
+                    )
                 }
                 IconButton(onClick = onLocation) {
-                    Icon(Icons.Default.LocationOn, contentDescription = "Location", tint = Color(0xFFFF9800))
+                    Icon(
+                        Icons.Default.LocationOn,
+                        contentDescription = "Location",
+                        tint = Color(0xFFFF9800)
+                    )
                 }
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onDetails) {
-                    Icon(Icons.Default.Info, contentDescription = "Info", tint = Color(0xFF2196F3))
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = "Info",
+                        tint = Color(0xFF2196F3),
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
             }
         }
