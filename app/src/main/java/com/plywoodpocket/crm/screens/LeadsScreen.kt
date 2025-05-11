@@ -224,10 +224,13 @@ fun LeadsScreen(
                                                             context.startActivity(intent)
                                                         },
                                                         onWhatsApp = {
-                                                            val uri =
-                                                                Uri.parse("https://wa.me/${lead.phone}")
-                                                            val intent =
-                                                                Intent(Intent.ACTION_VIEW, uri)
+                                                            val phoneNumber = if (lead.phone.startsWith("+91")) {
+                                                                lead.phone
+                                                            } else {
+                                                                "+91${lead.phone}"
+                                                            }
+                                                            val uri = Uri.parse("https://wa.me/${phoneNumber}")
+                                                            val intent = Intent(Intent.ACTION_VIEW, uri)
                                                             context.startActivity(intent)
                                                         },
                                                         onDelete = {
