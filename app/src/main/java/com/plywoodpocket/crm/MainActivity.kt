@@ -238,9 +238,9 @@ fun DashboardScreen(onLogout: () -> Unit, onAttendanceClick: () -> Unit) {
         BankCard()
         Spacer(modifier = Modifier.height(24.dp))
         InfiniteCardView()
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         TabRowSection(selectedTab) { selectedTab = it }
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         GridMenu(searchQuery, onAttendanceClick)
         Spacer(modifier = Modifier.weight(1f))
         BottomNavBar(
