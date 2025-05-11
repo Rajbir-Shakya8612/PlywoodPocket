@@ -18,17 +18,18 @@ import com.plywoodpocket.crm.viewmodel.AttendanceViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import com.plywoodpocket.crm.utils.LocationServiceHelper
+import com.plywoodpocket.crm.ui.ModernCalendar
+import java.time.LocalDate
 
 @SuppressLint("MissingPermission")
 @Composable
 fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
     val status = viewModel.attendanceStatus
     val context = LocalContext.current
-    val currentDate = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date()) }
+    val currentDate =
+        remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date()) }
 
-    LaunchedEffect(Unit) {
-        viewModel.fetchAttendanceStatus()
-    }
+    LaunchedEffect(Unit) { viewModel.fetchAttendanceStatus() }
 
     if (viewModel.showLocationDialog) {
         LocationServiceHelper.LocationServiceDialog(
@@ -47,229 +48,207 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Header
-        Text(
-            text = "Attendance",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+        TitleText("Attendance", 24)
+        TitleText(currentDate, 16, Color.Gray)
 
-        // Date
-        Text(
-            text = currentDate,
-            fontSize = 16.sp,
-            color = Color.Gray,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        viewModel.errorMessage?.let {
+            ErrorCard(it)
+        }
 
-        // Error Message
-        viewModel.errorMessage?.let { error ->
-            Card(
+        StatusCard(status, viewModel, context)
+
+        CalendarCard()
+    }
+}
+
+@Composable
+fun TitleText(text: String, size: Int, color: Color = Color.Black) {
+    Text(
+        text = text,
+        fontSize = size.sp,
+        fontWeight = FontWeight.Bold,
+        color = color
+    )
+}
+
+@Composable
+fun ErrorCard(message: String) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+    ) {
+        Text(
+            text = message,
+            color = Color(0xFFD32F2F),
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Composable
+fun StatusCard(status: String, viewModel: AttendanceViewModel, context: android.content.Context) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            when (status) {
+                "loading" -> CircularProgressIndicator()
+
+                "none" -> {
+                    TitleText("Not Checked In", 18, Color.Gray)
+                    LoadingButton(
+                        text = "Check In",
+                        loading = viewModel.loading,
+                        onClick = { viewModel.performCheckIn(context) },
+                        backgroundColor = Color(0xFF4CAF50)
+                    )
+                }
+
+                "checked_in" -> {
+                    TitleText("Checked In", 18, Color(0xFF4CAF50))
+                    InfoText("Time: ${formatIsoToTime(viewModel.checkInTime)}")
+                    LoadingButton(
+                        text = "Check Out",
+                        loading = viewModel.loading,
+                        onClick = { viewModel.performCheckOut(context) },
+                        backgroundColor = Color(0xFFFFC107)
+                    )
+                }
+
+                "checked_out" -> {
+                    TitleText("Attendance Complete ✅", 18, Color(0xFF4CAF50))
+                    InfoText(
+                        "Check In: ${formatIsoToDate(viewModel.checkInTime)} ${
+                            formatIsoToTime(
+                                viewModel.checkInTime
+                            )
+                        }"
+                    )
+                    InfoText(
+                        "Check Out: ${formatIsoToDate(viewModel.checkOutTime)} ${
+                            formatIsoToTime(
+                                viewModel.checkOutTime
+                            )
+                        }"
+                    )
+                    viewModel.workingHours?.let { InfoText("Working Hours: $it") }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun LoadingButton(text: String, loading: Boolean, onClick: () -> Unit, backgroundColor: Color) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = backgroundColor),
+        enabled = !loading
+    ) {
+        if (loading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                color = Color.White
+            )
+        } else {
+            Text(text, color = Color.White)
+        }
+    }
+}
+
+@Composable
+fun InfoText(text: String) {
+    Text(
+        text = text,
+        fontSize = 14.sp,
+        color = Color.Gray
+    )
+}
+
+@Composable
+fun CalendarCard() {
+    // Example attendance data: Mark some days with status
+    val attendanceData = mapOf(
+        LocalDate.now().minusDays(2) to "present",
+        LocalDate.now().minusDays(1) to "late",
+        LocalDate.now() to "present",
+        LocalDate.now().plusDays(1) to "absent"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            TitleText("Attendance Calendar", 18)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Modern calendar view
+            ModernCalendar(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFFFFEBEE)
-                )
-            ) {
-                Text(
-                    text = error,
-                    color = Color(0xFFD32F2F),
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
-        }
-
-        // Status Card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                when (status) {
-                    "loading" -> {
-                        CircularProgressIndicator()
-                    }
-                    "none" -> {
-                        Text(
-                            text = "Not Checked In",
-                            fontSize = 18.sp,
-                            color = Color.Gray,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                        Button(
-                            onClick = { viewModel.performCheckIn(context) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                            enabled = !viewModel.loading
-                        ) {
-                            if (viewModel.loading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    color = Color.White
-                                )
-                            } else {
-                                Text("Check In", color = Color.White)
-                            }
-                        }
-                    }
-                    "checked_in" -> {
-                        Text(
-                            text = "Checked In",
-                            fontSize = 18.sp,
-                            color = Color(0xFF4CAF50),
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        viewModel.checkInTime?.let {
-                            Text(
-                                text = "Time: $it",
-                                fontSize = 14.sp,
-                                color = Color.Gray
-                            )
-                        }
-                        Button(
-                            onClick = { viewModel.performCheckOut(context) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFC107)),
-                            enabled = !viewModel.loading
-                        ) {
-                            if (viewModel.loading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    color = Color.White
-                                )
-                            } else {
-                                Text("Check Out", color = Color.White)
-                            }
-                        }
-                    }
-                    "checked_out" -> {
-                        Text(
-                            text = "Attendance Complete ✅",
-                            fontSize = 18.sp,
-                            color = Color(0xFF4CAF50),
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        viewModel.checkInTime?.let {
-                            Text(
-                                text = "Check In: ${formatIsoToDate(it)} ${formatIsoToTime(it)}",
-                                fontSize = 14.sp,
-                                color = Color.Gray
-                            )
-                        }
-                        viewModel.checkOutTime?.let {
-                            Text(
-                                text = "Check Out: ${formatIsoToDate(it)} ${formatIsoToTime(it)}",
-                                fontSize = 14.sp,
-                                color = Color.Gray
-                            )
-                        }
-                        viewModel.workingHours?.let {
-                            Text(
-                                text = "Working Hours: $it",
-                                fontSize = 14.sp,
-                                color = Color.Gray
-                            )
-                        }
-                    }
+                    .height(360.dp),
+                attendanceData = attendanceData,
+                onDayClick = { clickedDate ->
+                    // You can add your logic here when a day is clicked
+                    println("Clicked date: $clickedDate")
                 }
-            }
-        }
-
-        // Calendar Card
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
             )
-        ) {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Calendar",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                // TODO: Implement calendar view
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Calendar View Coming Soon", color = Color.Gray)
-                }
-            }
         }
     }
 }
 
-fun formatToKolkata12Hour(time: String?): String? {
-    if (time.isNullOrBlank()) return null
-    // Try to parse as HH:mm:ss or HH:mm
-    val formats = listOf("HH:mm:ss", "HH:mm")
-    for (fmt in formats) {
-        try {
-            val sdf = SimpleDateFormat(fmt, Locale.getDefault())
-            sdf.timeZone = TimeZone.getTimeZone("UTC")
-            val date = sdf.parse(time)
-            val outSdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
-            outSdf.timeZone = TimeZone.getTimeZone("Asia/Kolkata")
-            return date?.let { outSdf.format(it) }
-        } catch (_: Exception) {}
-    }
-    return time // fallback
-}
 
 fun formatIsoToDate(iso: String?): String? {
-    if (iso.isNullOrBlank()) return null
-    return try {
-        val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", Locale.getDefault())
-        parser.timeZone = TimeZone.getTimeZone("UTC")
-        val date = parser.parse(iso)
-        val outSdf = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
-        outSdf.timeZone = TimeZone.getTimeZone("Asia/Kolkata")
-        date?.let { outSdf.format(it) }
-    } catch (e: Exception) {
-        null
+    return iso?.let {
+        try {
+            val parser =
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", Locale.getDefault()).apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }
+            val date = parser.parse(it)
+            SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).apply {
+                timeZone = TimeZone.getTimeZone("Asia/Kolkata")
+            }.format(date ?: return null)
+        } catch (e: Exception) {
+            null
+        }
     }
 }
 
 fun formatIsoToTime(iso: String?): String? {
-    if (iso.isNullOrBlank()) return null
-    return try {
-        val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", Locale.getDefault())
-        parser.timeZone = TimeZone.getTimeZone("UTC")
-        val date = parser.parse(iso)
-        val outSdf = SimpleDateFormat("hh:mm a", Locale.getDefault())
-        outSdf.timeZone = TimeZone.getTimeZone("Asia/Kolkata")
-        date?.let { outSdf.format(it) }
-    } catch (e: Exception) {
-        null
+    return iso?.let {
+        try {
+            val parser =
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", Locale.getDefault()).apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }
+            val date = parser.parse(it)
+            SimpleDateFormat("hh:mm a", Locale.getDefault()).apply {
+                timeZone = TimeZone.getTimeZone("Asia/Kolkata")
+            }.format(date ?: return null)
+        } catch (e: Exception) {
+            null
+        }
     }
 }
+

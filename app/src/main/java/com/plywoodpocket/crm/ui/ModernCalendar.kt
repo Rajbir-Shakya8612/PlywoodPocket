@@ -4,32 +4,33 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.kizitonwose.calendar.compose.HorizontalCalendar
 import com.kizitonwose.calendar.compose.rememberCalendarState
 import com.kizitonwose.calendar.core.CalendarDay
 import com.kizitonwose.calendar.core.DayPosition
-import com.kizitonwose.calendar.core.atStartOfMonth
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
-import java.util.Locale
+import java.util.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun ModernCalendar(
     modifier: Modifier = Modifier,
     onDayClick: (LocalDate) -> Unit = {},
-    attendanceData: Map<LocalDate, String> = emptyMap() // Map of date to attendance status
+    attendanceData: Map<LocalDate, String> = emptyMap()
 ) {
     val today = LocalDate.now()
     val currentMonth = YearMonth.now()
@@ -40,15 +41,44 @@ fun ModernCalendar(
         firstDayOfWeek = java.time.DayOfWeek.MONDAY
     )
 
-    Column(modifier = modifier) {
-        // Month and year header
-        Text(
-            text = calendarState.firstVisibleMonth.yearMonth.month.getDisplayName(TextStyle.FULL, Locale.getDefault()) +
-                    " " + calendarState.firstVisibleMonth.yearMonth.year,
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(16.dp)
-        )
-        // Weekdays row
+    val coroutineScope = rememberCoroutineScope()
+
+    Column(modifier = modifier.padding(8.dp)) {
+        // Header: Month-Year + Arrows
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            IconButton(onClick = {
+                val previousMonth = calendarState.firstVisibleMonth.yearMonth.minusMonths(1)
+                coroutineScope.launch {
+                    calendarState.animateScrollToMonth(previousMonth)
+                }
+            }) {
+                Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Previous")
+            }
+
+            Text(
+                text = calendarState.firstVisibleMonth.yearMonth.month.getDisplayName(TextStyle.FULL, Locale.getDefault()) +
+                        " " + calendarState.firstVisibleMonth.yearMonth.year,
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.Black
+            )
+
+            IconButton(onClick = {
+                val nextMonth = calendarState.firstVisibleMonth.yearMonth.plusMonths(1)
+                coroutineScope.launch {
+                    calendarState.animateScrollToMonth(nextMonth)
+                }
+            }) {
+                Icon(imageVector = Icons.Default.ArrowForward, contentDescription = "Next")
+            }
+        }
+
+        // Weekday labels
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             java.time.DayOfWeek.values().forEach { dayOfWeek ->
                 Text(
@@ -61,14 +91,16 @@ fun ModernCalendar(
                 )
             }
         }
+
         Spacer(modifier = Modifier.height(8.dp))
-        // Calendar
+
+        // Calendar view
         HorizontalCalendar(
             state = calendarState,
             dayContent = { day: CalendarDay ->
                 val date = day.date
                 val attendanceStatus = attendanceData[date]
-                
+
                 Box(
                     modifier = Modifier
                         .aspectRatio(1f)
@@ -81,11 +113,11 @@ fun ModernCalendar(
                     if (day.position == DayPosition.MonthDate) {
                         when {
                             date == today -> {
-                                // Today: blue circle with check
+                                // Today - Blue circle with tick
                                 Box(
                                     modifier = Modifier
                                         .size(36.dp)
-                                        .background(Color(0xFF1976D2), CircleShape),
+                                        .background(Color(0xFF2196F3), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -96,13 +128,13 @@ fun ModernCalendar(
                                     )
                                 }
                             }
+
                             attendanceStatus != null -> {
-                                // Day with attendance
                                 val backgroundColor = when (attendanceStatus.lowercase()) {
-                                    "present" -> Color(0xFF28a745) // Green
-                                    "late" -> Color(0xFFffc107) // Yellow
-                                    "absent" -> Color(0xFFdc3545) // Red
-                                    else -> Color(0xFFE0E0E0) // Gray
+                                    "present" -> Color(0xFF4CAF50)
+                                    "late" -> Color(0xFFFFC107)
+                                    "absent" -> Color(0xFFF44336)
+                                    else -> Color(0xFFE0E0E0)
                                 }
                                 Box(
                                     modifier = Modifier
@@ -117,8 +149,8 @@ fun ModernCalendar(
                                     )
                                 }
                             }
+
                             else -> {
-                                // Normal day
                                 Text(
                                     text = date.dayOfMonth.toString(),
                                     style = MaterialTheme.typography.bodyLarge,
@@ -129,8 +161,77 @@ fun ModernCalendar(
                     }
                 }
             },
-            monthHeader = {}, // Optional: add month header if needed
+            monthHeader = {}, // Skip extra header
             modifier = Modifier.fillMaxWidth()
         )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Legend at bottom
+        AttendanceLegend()
+        AttendanceSummary(attendanceData)
     }
-} 
+}
+
+@Composable
+fun AttendanceLegend() {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 12.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            LegendItem("Present", Color(0xFF4CAF50))
+            LegendItem("Late", Color(0xFFFFC107))
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            LegendItem("Absent", Color(0xFFF44336))
+            LegendItem("Today", Color(0xFF2196F3))
+        }
+    }
+}
+
+
+@Composable
+fun LegendItem(label: String, color: Color) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(horizontal = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(color, shape = CircleShape)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = Color.Black
+        )
+    }
+}
+
+@Composable
+fun AttendanceSummary(attendanceData: Map<LocalDate, String>) {
+    val presentCount = attendanceData.count { it.value.equals("present", ignoreCase = true) }
+    val absentCount = attendanceData.count { it.value.equals("absent", ignoreCase = true) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        Text(text = "Total Present: $presentCount", fontSize = 14.sp, color = Color.Black)
+        Text(text = "Total Absent: $absentCount", fontSize = 14.sp, color = Color.Black)
+    }
+}
+
+
