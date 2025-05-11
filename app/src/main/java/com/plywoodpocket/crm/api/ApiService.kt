@@ -25,12 +25,15 @@ interface ApiService {
 
     @GET("api/salesperson/attendance/status")
     suspend fun getAttendanceStatus(): Response<AttendanceStatusResponse>
+
     @Headers("Accept: application/json")
     @POST("api/attendance/checkin")
     suspend fun checkIn(@Body request: CheckInRequest): Response<Any>
+
     @Headers("Accept: application/json")
     @POST("api/attendance/checkout")
     suspend fun checkOut(@Body request: CheckOutRequest): Response<Any>
+
     @Headers("Accept: application/json")
     @POST("api/location/tracks")
     suspend fun trackLocation(@Body locationData: LocationData): Response<Any>
