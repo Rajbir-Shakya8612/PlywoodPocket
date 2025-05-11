@@ -36,6 +36,7 @@ import com.plywoodpocket.crm.components.InfiniteCardView
 import com.plywoodpocket.crm.screens.LoginScreen
 import com.plywoodpocket.crm.screens.RegisterScreen
 import com.plywoodpocket.crm.ui.theme.*
+import com.plywoodpocket.crm.utils.LocationServiceHelper
 import com.plywoodpocket.crm.utils.PermissionHandler
 import com.plywoodpocket.crm.viewmodel.AuthViewModel
 import com.plywoodpocket.crm.viewmodel.AuthState
@@ -60,8 +61,16 @@ fun MainScreen(activity: MainActivity) {
     var showLogin by remember { mutableStateOf(!authViewModel.isLoggedIn()) }
     var showRegister by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
+    var showLocationDialog by remember { mutableStateOf(false) }
     var showAttendanceScreen by remember { mutableStateOf(false) }
     val authState by authViewModel.authState.collectAsState()
+
+    // Check location services on app start
+    LaunchedEffect(Unit) {
+        if (!LocationServiceHelper.isLocationEnabled(context)) {
+            showLocationDialog = true
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -166,6 +175,16 @@ fun MainScreen(activity: MainActivity) {
                     onSettingsClick = {
                         PermissionHandler.openAppSettings(context)
                         showPermissionDialog = false
+                    }
+                )
+            }
+
+            if (showLocationDialog) {
+                LocationServiceHelper.LocationServiceDialog(
+                    onDismiss = { showLocationDialog = false },
+                    onSettingsClick = {
+                        LocationServiceHelper.openLocationSettings(context)
+                        showLocationDialog = false
                     }
                 )
             }

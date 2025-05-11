@@ -7,7 +7,9 @@ data class LocationData(
     val speed: Double,
     val type: String,
     val tracked_at: String,
-    val timestamp: String = tracked_at
+    val address: String? = null,
+    val exit_timestamp: String? = null,
+    val stay_duration: Int? = null
 )
 
 
