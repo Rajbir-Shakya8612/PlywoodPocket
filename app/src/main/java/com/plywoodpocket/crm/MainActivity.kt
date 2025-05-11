@@ -63,6 +63,7 @@ fun MainScreen(activity: MainActivity) {
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showLocationDialog by remember { mutableStateOf(false) }
     var showAttendanceScreen by remember { mutableStateOf(false) }
+    var showLeadsScreen by remember { mutableStateOf(false) }
     val authState by authViewModel.authState.collectAsState()
 
     // Check location services on app start
@@ -120,6 +121,9 @@ fun MainScreen(activity: MainActivity) {
             color = Color.Transparent
         ) {
             when {
+                showLeadsScreen -> {
+                    com.plywoodpocket.crm.screens.LeadsScreen(onBack = { showLeadsScreen = false })
+                }
                 showAttendanceScreen || showLogin || showRegister -> {
                     Column(
                         modifier = Modifier
@@ -210,7 +214,8 @@ fun MainScreen(activity: MainActivity) {
                             authViewModel.logout()
                             showLogin = true
                         },
-                        onAttendanceClick = { showAttendanceScreen = true }
+                        onAttendanceClick = { showAttendanceScreen = true },
+                        onLeadsClick = { showLeadsScreen = true }
                     )
                 }
             }
@@ -219,7 +224,7 @@ fun MainScreen(activity: MainActivity) {
 }
 
 @Composable
-fun DashboardScreen(onLogout: () -> Unit, onAttendanceClick: () -> Unit) {
+fun DashboardScreen(onLogout: () -> Unit, onAttendanceClick: () -> Unit, onLeadsClick: () -> Unit) {
     var selectedTab by remember { mutableStateOf(0) }
     var selectedIndex by remember { mutableStateOf(2) }
     var searchQuery by remember { mutableStateOf("") }
@@ -241,7 +246,7 @@ fun DashboardScreen(onLogout: () -> Unit, onAttendanceClick: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
         TabRowSection(selectedTab) { selectedTab = it }
         Spacer(modifier = Modifier.height(16.dp))
-        GridMenu(searchQuery, onAttendanceClick)
+        GridMenu(searchQuery, onAttendanceClick, onLeadsClick)
         Spacer(modifier = Modifier.weight(1f))
         BottomNavBar(
             selectedIndex = selectedIndex,
@@ -366,7 +371,7 @@ fun TabItem(title: String, selected: Boolean, modifier: Modifier = Modifier, onC
 }
 
 @Composable
-fun GridMenu(searchQuery: String, onAttendanceClick: () -> Unit) {
+fun GridMenu(searchQuery: String, onAttendanceClick: () -> Unit, onLeadsClick: () -> Unit) {
     val homeItems = listOf(
         Triple("Attendance", android.R.drawable.ic_menu_my_calendar, Color(0xFF1976D2)),
         Triple("Plans", android.R.drawable.ic_menu_compass, Color(0xFF1976D2)),
@@ -405,7 +410,8 @@ fun GridMenu(searchQuery: String, onAttendanceClick: () -> Unit) {
                 modifier = Modifier.width(100.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                analyticsItems.forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
+                MenuItem("Leads", android.R.drawable.ic_menu_agenda, Color(0xFF1976D2), onClick = onLeadsClick)
+                analyticsItems.drop(1).forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
             }
             Spacer(modifier = Modifier.width(24.dp))
             Column(

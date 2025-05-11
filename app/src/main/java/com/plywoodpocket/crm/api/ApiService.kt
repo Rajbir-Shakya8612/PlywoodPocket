@@ -38,5 +38,40 @@ interface ApiService {
     @POST("api/location/tracks")
     suspend fun trackLocation(@Body locationData: LocationData): Response<Any>
 
+    // Leads API
+    @GET("api/salesperson/leads")
+    suspend fun getLeads(): Response<LeadsResponse>
 
+    @POST("api/salesperson/leads")
+    suspend fun createLead(@Body request: LeadRequest): Response<LeadResponse>
+
+    @GET("api/salesperson/leads/{lead}")
+    suspend fun getLead(@Path("lead") leadId: Int): Response<LeadResponse>
+
+    @PUT("api/salesperson/leads/{lead}")
+    suspend fun updateLead(@Path("lead") leadId: Int, @Body request: LeadRequest): Response<LeadResponse>
+
+    @DELETE("api/salesperson/leads/{lead}")
+    suspend fun deleteLead(@Path("lead") leadId: Int): Response<Any>
+
+    @PUT("api/salesperson/leads/{lead}/status")
+    suspend fun updateLeadStatus(@Path("lead") leadId: Int, @Body request: UpdateStatusRequest): Response<LeadResponse>
+
+    @GET("api/salesperson/leads/status/{status}")
+    suspend fun getLeadsByStatus(@Path("status") status: Int): Response<LeadsResponse>
+
+    @POST("api/salesperson/leads/{lead}/follow-up")
+    suspend fun scheduleFollowUp(@Path("lead") leadId: Int, @Body request: FollowUpRequest): Response<Any>
+
+    @GET("api/salesperson/leads/stats")
+    suspend fun getLeadStats(): Response<LeadStatsResponse>
+
+    @GET("api/salesperson/leads/{lead}/follow-up-history")
+    suspend fun getFollowUpHistory(@Path("lead") leadId: Int): Response<FollowUpHistoryResponse>
+
+    @POST("api/salesperson/leads/{lead}/complete-follow-up")
+    suspend fun completeFollowUp(@Path("lead") leadId: Int, @Body request: CompleteFollowUpRequest): Response<Any>
+
+    @GET("api/salesperson/leads/follow-ups")
+    suspend fun getFollowUps(): Response<FollowUpsResponse>
 } 
