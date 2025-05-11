@@ -4,10 +4,14 @@ import android.app.DatePickerDialog
 import android.content.Context
 import android.location.Location
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,26 +27,24 @@ import com.plywoodpocket.crm.utils.LocationHelper
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.foundation.clickable
-//import androidx.compose.foundation.clip
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.rememberScrollState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LeadFormDialog(
     lead: Lead?,
     statuses: List<LeadStatus>,
+    defaultStatus: LeadStatus? = null,
     onDismiss: () -> Unit,
     onSubmit: (LeadRequest, Int?) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
     var name by remember { mutableStateOf(TextFieldValue(lead?.name ?: "")) }
     var phone by remember { mutableStateOf(TextFieldValue(lead?.phone ?: "")) }
     var email by remember { mutableStateOf(TextFieldValue(lead?.email ?: "")) }
     var address by remember { mutableStateOf(TextFieldValue(lead?.address ?: "")) }
-    var statusId by remember { mutableStateOf(lead?.status_id ?: statuses.firstOrNull()?.id ?: 0) }
+    var statusId by remember { mutableStateOf(lead?.status_id ?: defaultStatus?.id ?: statuses.firstOrNull()?.id ?: 0) }
     var followUpDate by remember { mutableStateOf(lead?.follow_up_date ?: "") }
     var notes by remember { mutableStateOf(TextFieldValue(lead?.notes ?: "")) }
     var description by remember { mutableStateOf(TextFieldValue(lead?.description ?: "")) }
@@ -50,6 +52,8 @@ fun LeadFormDialog(
     var longitude by remember { mutableStateOf(lead?.longitude ?: 0.0) }
     var locationStr by remember { mutableStateOf(lead?.location ?: "") }
     var loadingLocation by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
+    val selectedStatus = statuses.find { it.id == statusId }
 
     fun fetchLocation(context: Context) {
         loadingLocation = true
@@ -58,7 +62,7 @@ fun LeadFormDialog(
             if (loc != null) {
                 latitude = loc.latitude
                 longitude = loc.longitude
-                locationStr = LocationHelper.reverseGeocode(context, loc.latitude, loc.longitude)
+                locationStr = LocationHelper.reverseGeocode(context, loc.latitude, loc.longitude) ?: ""
             }
             loadingLocation = false
         }
@@ -72,51 +76,82 @@ fun LeadFormDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (lead == null) "Add Lead" else "Edit Lead") },
         text = {
-            Column(Modifier.fillMaxWidth()) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name*") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Phone*") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email*") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = address, onValueChange = { address = it }, label = { Text("Address") }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                DropdownMenuBox(
-                    label = "Status*",
-                    options = statuses,
-                    selectedId = statusId,
-                    onSelected = { statusId = it }
-                )
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
                     OutlinedTextField(
-                        value = followUpDate,
-                        onValueChange = { followUpDate = it },
-                        label = { Text("Follow-up Date (dd-MM-yyyy)*") },
-                        modifier = Modifier.weight(1f),
-                        readOnly = true
+                        value = selectedStatus?.name ?: "",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Status*") },
+                        trailingIcon = {
+                            Icon(Icons.Default.ArrowDropDown, contentDescription = "Dropdown")
+                        },
+                        modifier = Modifier.menuAnchor().fillMaxWidth()
                     )
-                    IconButton(onClick = {
-                        val cal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Kolkata"))
-                        val datePicker = DatePickerDialog(
-                            context,
-                            { _, y, m, d ->
-                                val sdf = SimpleDateFormat("dd-MM-yyyy", Locale("en", "IN"))
-                                cal.set(y, m, d)
-                                followUpDate = sdf.format(cal.time)
-                            },
-                            cal.get(Calendar.YEAR),
-                            cal.get(Calendar.MONTH),
-                            cal.get(Calendar.DAY_OF_MONTH)
-                        )
-                        datePicker.show()
-                    }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Pick Date")
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        statuses.forEach { status ->
+                            DropdownMenuItem(
+                                text = { Text(status.name) },
+                                onClick = {
+                                    statusId = status.id
+                                    expanded = false
+                                }
+                            )
+                        }
                     }
                 }
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = followUpDate,
+                    onValueChange = { followUpDate = it },
+                    label = { Text("Follow-up Date (dd-MM-yyyy)*") },
+                    modifier = Modifier.fillMaxWidth(),
+                    readOnly = true,
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            val cal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Kolkata"))
+                            val datePicker = DatePickerDialog(
+                                context,
+                                { _, y, m, d ->
+                                    val sdf = SimpleDateFormat("dd-MM-yyyy", Locale("en", "IN"))
+                                    cal.set(y, m, d)
+                                    followUpDate = sdf.format(cal.time)
+                                },
+                                cal.get(Calendar.YEAR),
+                                cal.get(Calendar.MONTH),
+                                cal.get(Calendar.DAY_OF_MONTH)
+                            )
+                            datePicker.show()
+                        }) {
+                            Icon(Icons.Default.DateRange, contentDescription = "Pick date")
+                        }
+                    }
+                )
                 OutlinedTextField(value = notes, onValueChange = { notes = it }, label = { Text("Notes") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Location: ${if (loadingLocation) "Fetching..." else locationStr}", modifier = Modifier.weight(1f))
-                    if (!loadingLocation) Button(onClick = { fetchLocation(context) }) { Text("Refresh") }
+                    Text("Location: "+ if (loadingLocation) "Fetching..." else locationStr, modifier = Modifier.weight(1f))
+                    if (!loadingLocation) {
+                        Button(onClick = { fetchLocation(context) }) {
+                            Text("Refresh")
+                        }
+                    }
                 }
             }
         },
@@ -143,7 +178,9 @@ fun LeadFormDialog(
                     ),
                     lead?.id
                 )
-            }) { Text(if (lead == null) "Add Lead" else "Update Lead") }
+            }) {
+                Text(if (lead == null) "Add Lead" else "Update Lead")
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
@@ -161,12 +198,15 @@ fun DropdownMenuBox(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val selected = options.find { it.id == selectedId }
+
     Box {
         OutlinedTextField(
             value = selected?.name ?: "",
             onValueChange = {},
             label = { Text(label) },
-            modifier = Modifier.fillMaxWidth().clickable { expanded = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = true },
             readOnly = true
         )
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -181,4 +221,4 @@ fun DropdownMenuBox(
             }
         }
     }
-} 
+}
