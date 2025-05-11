@@ -32,20 +32,36 @@ class FollowUpReminderWorker(
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
             val tokenManager = TokenManager(applicationContext)
+            // Check if user is logged in
+            if (!tokenManager.isLoggedIn()) {
+                return@withContext Result.success()
+            }
+
             val api = ApiClient(tokenManager).apiService
             val response = api.getFollowUps()
+            
             if (response.isSuccessful) {
                 val followUps = response.body()?.followUps ?: emptyList()
                 val now = System.currentTimeMillis()
+                
                 for (followUp in followUps) {
                     val followUpTime = parseDateToMillis(followUp.follow_up_date)
                     val diff = followUpTime - now
-                    if (diff <= 2 * 24 * 60 * 60 * 1000L) { // within 2 days or overdue
+                    
+                    // Show notification for follow-ups within 2 days or overdue
+                    if (diff <= 2 * 24 * 60 * 60 * 1000L) {
                         showNotification(followUp)
                     }
                 }
+                Result.success()
+            } else {
+                // If token is invalid, retry
+                if (response.code() == 401) {
+                    Result.retry()
+                } else {
+                    Result.success()
+                }
             }
-            Result.success()
         } catch (e: Exception) {
             Result.retry()
         }
@@ -53,22 +69,33 @@ class FollowUpReminderWorker(
 
     private fun showNotification(followUp: LeadFollowUp) {
         createNotificationChannel()
+        
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
             putExtra("navigate_to_followup_detail", true)
             putExtra("lead_id", followUp.id)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
+
         val pendingIntent = PendingIntent.getActivity(
-            applicationContext, followUp.id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            applicationContext,
+            followUp.id,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+
         val builder = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("Lead Follow-up Reminder")
-            .setContentText("Follow up with ${followUp.name ?: "Lead"} on ${followUp.follow_up_date ?: "-"}")
+            .setContentText("Follow up with ${followUp.name ?: "Lead"} on ${formatDate(followUp.follow_up_date) ?: "-"}")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
-        NotificationManagerCompat.from(applicationContext).notify(followUp.id, builder.build())
+
+        try {
+            NotificationManagerCompat.from(applicationContext).notify(followUp.id, builder.build())
+        } catch (e: SecurityException) {
+            // Handle notification permission not granted
+        }
     }
 
     private fun createNotificationChannel() {
@@ -77,7 +104,12 @@ class FollowUpReminderWorker(
                 CHANNEL_ID,
                 CHANNEL_NAME,
                 NotificationManager.IMPORTANCE_HIGH
-            )
+            ).apply {
+                description = "Notifications for lead follow-ups"
+                enableLights(true)
+                enableVibration(true)
+            }
+            
             val manager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }
@@ -85,7 +117,7 @@ class FollowUpReminderWorker(
 
     private fun parseDateToMillis(dateStr: String?): Long {
         if (dateStr.isNullOrBlank()) return 0L
-        // Try both possible formats
+        
         val formats = listOf(
             "yyyy-MM-dd'T'HH:mm:ss",
             "yyyy-MM-dd HH:mm:ss",
@@ -94,6 +126,7 @@ class FollowUpReminderWorker(
             "dd-MM-yyyy HH:mm",
             "dd-MM-yyyy"
         )
+        
         for (fmt in formats) {
             try {
                 val sdf = SimpleDateFormat(fmt, Locale.getDefault())
@@ -101,5 +134,17 @@ class FollowUpReminderWorker(
             } catch (_: Exception) {}
         }
         return 0L
+    }
+
+    private fun formatDate(dateStr: String?): String? {
+        if (dateStr.isNullOrBlank()) return null
+        
+        return try {
+            val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+            val formatter = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault())
+            formatter.format(parser.parse(dateStr) ?: return dateStr)
+        } catch (e: Exception) {
+            dateStr
+        }
     }
 } 

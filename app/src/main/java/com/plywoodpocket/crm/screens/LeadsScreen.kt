@@ -57,6 +57,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.compose.runtime.LaunchedEffect
 import com.plywoodpocket.crm.MainActivity
+import com.plywoodpocket.crm.MainScreen
 import com.plywoodpocket.crm.api.ApiClient
 import com.plywoodpocket.crm.utils.TokenManager
 import kotlinx.coroutines.Dispatchers
@@ -479,8 +480,9 @@ fun AppNavHost(activity: MainActivity) {
             intent.removeExtra("lead_id")
         }
     }
-    NavHost(navController, startDestination = "leads") {
-        composable("leads") { LeadsScreen(onBack = { activity.finish() }, navController = navController) }
+    NavHost(navController, startDestination = "dashboard") {
+        composable("dashboard") { MainScreen(activity) }
+        composable("leads") { LeadsScreen(onBack = { navController.popBackStack() }, navController = navController) }
         composable("followup_detail/{leadId}") { backStackEntry ->
             val leadId = backStackEntry.arguments?.getString("leadId")?.toIntOrNull()
             if (leadId != null) {

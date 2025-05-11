@@ -107,6 +107,8 @@ fun MainScreen(activity: MainActivity) {
                 if (msg.contains("Login successful", ignoreCase = true)) {
                     showLogin = false
                     showRegister = false
+                    showAttendanceScreen = false
+                    showLeadsScreen = false
                 } else if (msg.contains("Registration successful", ignoreCase = true)) {
                     showRegister = false
                     showLogin = true
@@ -128,7 +130,21 @@ fun MainScreen(activity: MainActivity) {
                 showLeadsScreen -> {
                     com.plywoodpocket.crm.screens.LeadsScreen(onBack = { showLeadsScreen = false })
                 }
-                showAttendanceScreen || showLogin || showRegister -> {
+                showAttendanceScreen -> {
+                    val apiClient = ApiClient(TokenManager(context))
+                    val attendanceViewModel: com.plywoodpocket.crm.viewmodel.AttendanceViewModel = viewModel(
+                        factory = com.plywoodpocket.crm.viewmodel.AttendanceViewModelFactory(
+                            context.applicationContext as android.app.Application,
+                            com.plywoodpocket.crm.utils.TokenManager(context),
+                            apiClient.apiService
+                        )
+                    )
+                    com.plywoodpocket.crm.screens.AttendanceScreen(
+                        viewModel = attendanceViewModel,
+                        onBack = { showAttendanceScreen = false }
+                    )
+                }
+                showLogin || showRegister -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -147,20 +163,6 @@ fun MainScreen(activity: MainActivity) {
                                 .background(Color(0xFFFFA726))
                         ) {
                             when {
-                                showAttendanceScreen -> {
-                                    val apiClient = ApiClient(TokenManager(context))
-                                    val attendanceViewModel: com.plywoodpocket.crm.viewmodel.AttendanceViewModel = viewModel(
-                                        factory = com.plywoodpocket.crm.viewmodel.AttendanceViewModelFactory(
-                                            context.applicationContext as android.app.Application,
-                                            com.plywoodpocket.crm.utils.TokenManager(context),
-                                            apiClient.apiService
-                                        )
-                                    )
-                                    com.plywoodpocket.crm.screens.AttendanceScreen(
-                                        viewModel = attendanceViewModel,
-                                        onBack = { showAttendanceScreen = false }
-                                    )
-                                }
                                 showLogin -> {
                                     LoginScreen(
                                         onLoginSuccess = { email, password ->
@@ -185,24 +187,6 @@ fun MainScreen(activity: MainActivity) {
                                     )
                                 }
                             }
-                            if (showPermissionDialog) {
-                                PermissionHandler.PermissionRequestDialog(
-                                    onDismiss = { showPermissionDialog = false },
-                                    onSettingsClick = {
-                                        PermissionHandler.openAppSettings(context)
-                                        showPermissionDialog = false
-                                    }
-                                )
-                            }
-                            if (showLocationDialog) {
-                                LocationServiceHelper.LocationServiceDialog(
-                                    onDismiss = { showLocationDialog = false },
-                                    onSettingsClick = {
-                                        LocationServiceHelper.openLocationSettings(context)
-                                        showLocationDialog = false
-                                    }
-                                )
-                            }
                         }
                         Spacer(
                             modifier = Modifier
@@ -222,6 +206,25 @@ fun MainScreen(activity: MainActivity) {
                         onLeadsClick = { showLeadsScreen = true }
                     )
                 }
+            }
+
+            if (showPermissionDialog) {
+                PermissionHandler.PermissionRequestDialog(
+                    onDismiss = { showPermissionDialog = false },
+                    onSettingsClick = {
+                        PermissionHandler.openAppSettings(context)
+                        showPermissionDialog = false
+                    }
+                )
+            }
+            if (showLocationDialog) {
+                LocationServiceHelper.LocationServiceDialog(
+                    onDismiss = { showLocationDialog = false },
+                    onSettingsClick = {
+                        LocationServiceHelper.openLocationSettings(context)
+                        showLocationDialog = false
+                    }
+                )
             }
         }
     }

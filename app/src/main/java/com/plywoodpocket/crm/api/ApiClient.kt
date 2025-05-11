@@ -7,6 +7,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
+import com.google.gson.GsonBuilder
 
 class ApiClient(private val tokenManager: TokenManager) {
     private val baseUrl = "https://plyvista.com/"
@@ -39,10 +40,14 @@ class ApiClient(private val tokenManager: TokenManager) {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
+    private val gson = GsonBuilder()
+        .setLenient()
+        .create()
+
     private val retrofit = Retrofit.Builder()
         .baseUrl(baseUrl)
         .client(client)
-        .addConverterFactory(GsonConverterFactory.create())
+        .addConverterFactory(GsonConverterFactory.create(gson))
         .build()
 
     val apiService: ApiService = retrofit.create(ApiService::class.java)
