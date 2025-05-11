@@ -22,6 +22,7 @@ import java.util.*
 import com.plywoodpocket.crm.utils.LocationServiceHelper
 import com.plywoodpocket.crm.ui.ModernCalendar
 import java.time.LocalDate
+import androidx.activity.compose.BackHandler
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -41,6 +42,10 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
                 viewModel.showLocationDialog = false
             }
         )
+    }
+
+    BackHandler {
+        onBack()
     }
 
     Column(
