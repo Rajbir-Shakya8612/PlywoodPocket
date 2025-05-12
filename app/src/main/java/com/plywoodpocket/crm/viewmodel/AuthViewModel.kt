@@ -27,6 +27,9 @@ class AuthViewModel(context: Context) : ViewModel() {
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
 
+    private val _isLoggedIn = MutableStateFlow(tokenManager.isLoggedIn())
+    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
+
     private val _roles = MutableStateFlow<List<Role>>(emptyList())
     val roles: StateFlow<List<Role>> = _roles
 
@@ -40,7 +43,7 @@ class AuthViewModel(context: Context) : ViewModel() {
     val rolesError: StateFlow<String?> = _rolesError
 
     init {
-        // Check token validity on initialization
+        // Only set error state if not logged in
         if (!tokenManager.isLoggedIn()) {
             _authState.value = AuthState.Error("Please login to continue")
         }
@@ -63,6 +66,7 @@ class AuthViewModel(context: Context) : ViewModel() {
                             loginResponse.user.role.name,
                             expiration
                         )
+                        _isLoggedIn.value = true
                         _authState.value = AuthState.Success("Login successful")
                     } else {
                         _authState.value = AuthState.Error("Login failed: Empty response")
@@ -127,17 +131,13 @@ class AuthViewModel(context: Context) : ViewModel() {
             _authState.value = AuthState.Loading
             try {
                 val response = apiService.logout()
-                if (response.isSuccessful) {
-                    tokenManager.clearAuthData()
-                    _authState.value = AuthState.Success("Logout successful")
-                } else {
-                    // Even if the API call fails, clear local auth data
-                    tokenManager.clearAuthData()
-                    _authState.value = AuthState.Success("Logout successful")
-                }
+                tokenManager.clearAuthData()
+                _isLoggedIn.value = false
+                _authState.value = AuthState.Success("Logout successful")
             } catch (e: Exception) {
                 // Even if there's an exception, clear local auth data
                 tokenManager.clearAuthData()
+                _isLoggedIn.value = false
                 _authState.value = AuthState.Success("Logout successful")
             }
         }
@@ -171,10 +171,6 @@ class AuthViewModel(context: Context) : ViewModel() {
     }
 
     fun isLoggedIn(): Boolean {
-        val isLoggedIn = tokenManager.isLoggedIn()
-        if (!isLoggedIn) {
-            _authState.value = AuthState.Error("Please login to continue")
-        }
-        return isLoggedIn
+        return _isLoggedIn.value
     }
 }

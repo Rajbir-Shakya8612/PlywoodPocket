@@ -65,7 +65,7 @@ fun MainScreen(activity: MainActivity) {
     val context = LocalContext.current
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = viewModel(factory = com.plywoodpocket.crm.viewmodel.AuthViewModelFactory(context))
-    var showLogin by remember { mutableStateOf(!authViewModel.isLoggedIn()) }
+    val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
     var showRegister by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showLocationDialog by remember { mutableStateOf(false) }
@@ -77,51 +77,29 @@ fun MainScreen(activity: MainActivity) {
     val attendanceViewModel: com.plywoodpocket.crm.viewmodel.AttendanceViewModel = viewModel()
     val attendanceError = attendanceViewModel.errorMessage
 
-    LaunchedEffect(attendanceError) {
-        if (attendanceError == "Session expired. Please login again.") {
-            showLogin = true
-            showRegister = false
-            showAttendanceScreen = false
-            showLeadsScreen = false
-        }
-    }
-
     // Check authentication state on app start and when auth state changes
     LaunchedEffect(authState) {
         when (authState) {
             is AuthState.Success -> {
                 val msg = (authState as AuthState.Success).message
                 when {
-                    msg.contains("Login successful", ignoreCase = true) -> {
-                        showLogin = false
-                        showRegister = false
-                        showAttendanceScreen = false
-                        showLeadsScreen = false
-                    }
                     msg.contains("Registration successful", ignoreCase = true) -> {
                         showRegister = false
-                        showLogin = true
-                    }
-                    msg.contains("Logout successful", ignoreCase = true) -> {
-                        showLogin = true
-                        showRegister = false
-                        showAttendanceScreen = false
-                        showLeadsScreen = false
                     }
                 }
             }
             is AuthState.Error -> {
                 val errorMsg = (authState as AuthState.Error).message
-                if (errorMsg.contains("Unauthenticated", ignoreCase = true) || 
-                    errorMsg.contains("Please login", ignoreCase = true)) {
-                    showLogin = true
-                    showRegister = false
-                    showAttendanceScreen = false
-                    showLeadsScreen = false
-                }
                 Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
             }
             else -> {}
+        }
+    }
+
+    // Check session expiration from attendance error
+    LaunchedEffect(attendanceError) {
+        if (attendanceError == "Session expired. Please login again.") {
+            authViewModel.logout()
         }
     }
 
@@ -158,69 +136,63 @@ fun MainScreen(activity: MainActivity) {
             modifier = Modifier.fillMaxSize(),
             color = Color.Transparent
         ) {
-            when {
-                !authViewModel.isLoggedIn() || showLogin || showRegister -> {
-                    Column(
+            if (!isLoggedIn || showRegister) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black)
+                ) {
+                    Spacer(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .fillMaxWidth()
+                            .height(32.dp)
                             .background(Color.Black)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .background(Color(0xFFFFA726))
                     ) {
-                        Spacer(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(32.dp)
-                                .background(Color.Black)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .background(Color(0xFFFFA726))
-                        ) {
-                            when {
-                                showLogin -> {
-                                    LoginScreen(
-                                        onLoginSuccess = { email, password ->
-                                            authViewModel.login(email, password)
-                                        },
-                                        onNavigateToRegister = {
-                                            showLogin = false
-                                            showRegister = true
-                                        }
-                                    )
-                                }
-                                showRegister -> {
-                                    RegisterScreen(
-                                        onNavigateToLogin = {
-                                            showRegister = false
-                                            showLogin = true
-                                        },
-                                        onRegisterSuccess = {
-                                            showRegister = false
-                                            showLogin = true
-                                        }
-                                    )
-                                }
+                        when {
+                            !isLoggedIn && !showRegister -> {
+                                LoginScreen(
+                                    onLoginSuccess = { email, password ->
+                                        authViewModel.login(email, password)
+                                    },
+                                    onNavigateToRegister = {
+                                        showRegister = true
+                                    }
+                                )
+                            }
+                            showRegister -> {
+                                RegisterScreen(
+                                    onNavigateToLogin = {
+                                        showRegister = false
+                                    },
+                                    onRegisterSuccess = {
+                                        showRegister = false
+                                    }
+                                )
                             }
                         }
-                        Spacer(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(36.dp)
-                                .background(Color.Black)
-                        )
                     }
-                }
-                else -> {
-                    DashboardScreen(
-                        navController = navController,
-                        onLogout = {
-                            authViewModel.logout()
-                        },
-                        onAttendanceClick = { showAttendanceScreen = true },
-                        onLeadsClick = { showLeadsScreen = true }
+                    Spacer(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(36.dp)
+                            .background(Color.Black)
                     )
                 }
+            } else {
+                DashboardScreen(
+                    navController = navController,
+                    onLogout = {
+                        authViewModel.logout()
+                    },
+                    onAttendanceClick = { showAttendanceScreen = true },
+                    onLeadsClick = { showLeadsScreen = true }
+                )
             }
 
             if (showPermissionDialog) {
