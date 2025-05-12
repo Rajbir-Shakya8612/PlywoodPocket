@@ -54,24 +54,31 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFFFA726))
-            .padding(16.dp),
+            .padding(start = 12.dp, end = 12.dp, top = 32.dp, bottom = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        Spacer(modifier = Modifier.height(16.dp))
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { onBack() }) {
+            IconButton(
+                onClick = { onBack() },
+                modifier = Modifier.size(40.dp)
+            ) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back"
+                    contentDescription = "Back",
+                    tint = Color.Black,
+                    modifier = Modifier.size(28.dp)
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
-            TitleText("Attendance", 24)
+            TitleText("Attendance Dashboard", 24)
         }
-        // Modern Date Card
         Card(
             modifier = Modifier
                 .padding(top = 4.dp, bottom = 4.dp)
@@ -100,7 +107,6 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
                 )
             }
         }
-        // Modern Status Card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -124,7 +130,7 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
                 }
             }
         }
-        CalendarCard()
+        CalendarCard(viewModel)
     }
 }
 
@@ -244,14 +250,16 @@ fun InfoText(text: String) {
 }
 
 @Composable
-fun CalendarCard() {
-    // Example attendance data: Mark some days with status
-    val attendanceData = mapOf(
-        LocalDate.now().minusDays(2) to "present",
-        LocalDate.now().minusDays(1) to "late",
-        LocalDate.now() to "present",
-        LocalDate.now().plusDays(1) to "absent"
+fun CalendarCard(viewModel: AttendanceViewModel) {
+    val today = LocalDate.now()
+    val currentMonth = today.monthValue
+    val currentYear = today.year
+    val rawAttendanceData = mapOf(
+        today.minusDays(2) to "present",
+        today.minusDays(1) to "late",
+        today to "present",
     )
+    val attendanceData = rawAttendanceData.filterKeys { it.isBefore(today.plusDays(1)) }
 
     Card(
         modifier = Modifier
@@ -269,17 +277,15 @@ fun CalendarCard() {
             TitleText("Attendance Calendar", 18)
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Modern calendar view
             ModernCalendar(
-                modifier = Modifier
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 attendanceData = attendanceData,
-                onDayClick = { /* Do nothing or show a toast/snackbar if needed */ }
+                onDayClick = { /* Optionally show details */ },
+                summaryUpToDate = today
             )
         }
     }
 }
-
 
 fun formatIsoToDate(iso: String?): String? {
     return iso?.let {

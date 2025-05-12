@@ -32,7 +32,8 @@ import androidx.compose.foundation.verticalScroll
 fun ModernCalendar(
     modifier: Modifier = Modifier,
     onDayClick: (LocalDate) -> Unit = {},
-    attendanceData: Map<LocalDate, String> = emptyMap()
+    attendanceData: Map<LocalDate, String> = emptyMap(),
+    summaryUpToDate: LocalDate = LocalDate.now()
 ) {
     val today = LocalDate.now()
     val currentMonth = YearMonth.now()
@@ -171,7 +172,7 @@ fun ModernCalendar(
 
         // Legend at bottom
         AttendanceLegend()
-        AttendanceSummary(attendanceData)
+        AttendanceSummary(attendanceData, summaryUpToDate)
     }
 }
 
@@ -221,9 +222,11 @@ fun LegendItem(label: String, color: Color) {
 }
 
 @Composable
-fun AttendanceSummary(attendanceData: Map<LocalDate, String>) {
-    val presentCount = attendanceData.count { it.value.equals("present", ignoreCase = true) }
-    val absentCount = attendanceData.count { it.value.equals("absent", ignoreCase = true) }
+fun AttendanceSummary(attendanceData: Map<LocalDate, String>, summaryUpToDate: LocalDate) {
+    val filtered = attendanceData.filterKeys { it.isBefore(summaryUpToDate.plusDays(1)) }
+    val presentCount = filtered.count { it.value.equals("present", ignoreCase = true) }
+    val absentCount = filtered.count { it.value.equals("absent", ignoreCase = true) }
+    val lateCount = filtered.count { it.value.equals("late", ignoreCase = true) }
 
     Row(
         modifier = Modifier
@@ -232,6 +235,7 @@ fun AttendanceSummary(attendanceData: Map<LocalDate, String>) {
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         Text(text = "Total Present: $presentCount", fontSize = 14.sp, color = Color.Black)
+        Text(text = "Total Late: $lateCount", fontSize = 14.sp, color = Color.Black)
         Text(text = "Total Absent: $absentCount", fontSize = 14.sp, color = Color.Black)
     }
 }
