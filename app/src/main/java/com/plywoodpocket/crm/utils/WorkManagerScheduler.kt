@@ -41,7 +41,7 @@ object WorkManagerScheduler {
         // Schedule periodic work request
         val periodicWorkRequest = PeriodicWorkRequestBuilder<FollowUpReminderWorker>(
             15, TimeUnit.MINUTES,
-            5, TimeUnit.MINUTES // Flex interval
+            15, TimeUnit.MINUTES // Flex interval
         )
             .setConstraints(constraints)
             .build()
