@@ -209,70 +209,74 @@ fun LeadsScreen(
                                             )
                                         }
                                     }
-                                    Spacer(Modifier.height(8.dp))
-                                    if (statusLeads.isEmpty()) {
-                                        Text(
-                                            "No leads",
-                                            color = Color.Gray,
-                                            modifier = Modifier.padding(8.dp)
-                                        )
-                                    } else {
-                                        Column {
-                                            statusLeads.forEachIndexed { idx, lead ->
-                                                LeadCardWhite(
-                                                    lead = lead,
-                                                    onEdit = {
-                                                        editingLead = lead
-                                                        defaultStatusForNewLead = lead.status
-                                                        showForm = true
-                                                    },
-                                                    onCall = {
-                                                        val intent = Intent(
-                                                            Intent.ACTION_DIAL,
-                                                            Uri.parse("tel:${lead.phone}")
-                                                        )
-                                                        context.startActivity(intent)
-                                                    },
-                                                    onWhatsApp = {
-                                                        val phoneNumber = if (lead.phone.startsWith("+91")) {
-                                                            lead.phone
-                                                        } else {
-                                                            "+91${lead.phone}"
-                                                        }
-                                                        val uri = Uri.parse("https://wa.me/${phoneNumber}")
-                                                        val intent = Intent(Intent.ACTION_VIEW, uri)
-                                                        context.startActivity(intent)
-                                                    },
-                                                    onDelete = {
-                                                        viewModel.deleteLead(
-                                                            lead.id ?: return@LeadCardWhite
-                                                        ) { success, msg ->
-                                                            scope.launch {
-                                                                snackbarHostState.showSnackbar(
-                                                                    msg
-                                                                )
+                                    // Scrollable leads list
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .weight(1f)
+                                            .verticalScroll(rememberScrollState())
+                                    ) {
+                                        if (statusLeads.isEmpty()) {
+                                            Text(
+                                                "No leads",
+                                                color = Color.Gray,
+                                                modifier = Modifier.padding(8.dp)
+                                            )
+                                        } else {
+                                            Column {
+                                                statusLeads.forEach { lead ->
+                                                    LeadCardWhite(
+                                                        lead = lead,
+                                                        onEdit = {
+                                                            editingLead = lead
+                                                            defaultStatusForNewLead = lead.status
+                                                            showForm = true
+                                                        },
+                                                        onCall = {
+                                                            val intent = Intent(
+                                                                Intent.ACTION_DIAL,
+                                                                Uri.parse("tel:${lead.phone}")
+                                                            )
+                                                            context.startActivity(intent)
+                                                        },
+                                                        onWhatsApp = {
+                                                            val phoneNumber = if (lead.phone.startsWith("+91")) {
+                                                                lead.phone
+                                                            } else {
+                                                                "+91${lead.phone}"
                                                             }
-                                                        }
-                                                    },
-                                                    onLocation = {
-                                                        lead.latitude?.let { lat ->
-                                                            lead.longitude?.let { lng ->
-                                                                val uri =
-                                                                    Uri.parse("geo:$lat,$lng?q=$lat,$lng(${lead.address ?: "Lead Location"})")
-                                                                val intent = Intent(
-                                                                    Intent.ACTION_VIEW,
-                                                                    uri
-                                                                )
-                                                                context.startActivity(intent)
+                                                            val uri = Uri.parse("https://wa.me/${phoneNumber}")
+                                                            val intent = Intent(Intent.ACTION_VIEW, uri)
+                                                            context.startActivity(intent)
+                                                        },
+                                                        onDelete = {
+                                                            viewModel.deleteLead(
+                                                                lead.id ?: return@LeadCardWhite
+                                                            ) { success, msg ->
+                                                                scope.launch {
+                                                                    snackbarHostState.showSnackbar(
+                                                                        msg
+                                                                    )
+                                                                }
                                                             }
+                                                        },
+                                                        onLocation = {
+                                                            lead.latitude?.let { lat ->
+                                                                lead.longitude?.let { lng ->
+                                                                    val uri =
+                                                                        Uri.parse("geo:$lat,$lng?q=$lat,$lng(${lead.address ?: "Lead Location"})")
+                                                                    val intent = Intent(
+                                                                        Intent.ACTION_VIEW,
+                                                                        uri
+                                                                    )
+                                                                    context.startActivity(intent)
+                                                                }
+                                                            }
+                                                        },
+                                                        onDetails = {
+                                                            showDetailsForLead = lead
                                                         }
-                                                    },
-                                                    onDetails = {
-                                                        showDetailsForLead = lead
-                                                    }
-                                                )
-                                                if (idx != statusLeads.lastIndex) {
-                                                    Spacer(Modifier.height(12.dp))
+                                                    )
                                                 }
                                             }
                                         }
@@ -367,7 +371,6 @@ fun LeadCardWhite(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(lead.name, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.Black)
-            Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Default.Phone,
@@ -378,7 +381,6 @@ fun LeadCardWhite(
                 Spacer(Modifier.width(4.dp))
                 Text(lead.phone, color = Color.Gray, fontSize = 15.sp)
             }
-            Spacer(Modifier.height(6.dp))
             if (!lead.email.isNullOrBlank()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -390,7 +392,6 @@ fun LeadCardWhite(
                     Spacer(Modifier.width(4.dp))
                     Text(lead.email, color = Color.Gray, fontSize = 15.sp)
                 }
-                Spacer(Modifier.height(6.dp))
             }
             if (!lead.company.isNullOrBlank()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -403,7 +404,6 @@ fun LeadCardWhite(
                     Spacer(Modifier.width(4.dp))
                     Text(lead.company ?: "", color = Color.Gray, fontSize = 15.sp)
                 }
-                Spacer(Modifier.height(6.dp))
             }
             if (!lead.follow_up_date.isNullOrBlank()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -420,7 +420,6 @@ fun LeadCardWhite(
                         fontSize = 15.sp
                     )
                 }
-                Spacer(Modifier.height(6.dp))
             }
             // Action icons row
             Row(
