@@ -61,7 +61,7 @@ fun ModernCalendar(
                     calendarState.animateScrollToMonth(previousMonth)
                 }
             }) {
-                Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Previous")
+                Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Previous", tint = Color.Black)
             }
 
             Text(
@@ -77,7 +77,7 @@ fun ModernCalendar(
                     calendarState.animateScrollToMonth(nextMonth)
                 }
             }) {
-                Icon(imageVector = Icons.Default.ArrowForward, contentDescription = "Next")
+                Icon(imageVector = Icons.Default.ArrowForward, contentDescription = "Next", tint = Color.Black)
             }
         }
 
@@ -89,7 +89,7 @@ fun ModernCalendar(
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Gray,
+                    color = Color.Black,
                     maxLines = 1
                 )
             }
@@ -148,7 +148,7 @@ fun ModernCalendar(
                                     Text(
                                         text = date.dayOfMonth.toString(),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = Color.White
+                                        color = Color.Black
                                     )
                                 }
                             }
@@ -216,7 +216,7 @@ fun LegendItem(label: String, color: Color) {
         Text(
             text = label,
             fontSize = 12.sp,
-            color = Color.Black
+            color = Color.White
         )
     }
 }
@@ -234,9 +234,9 @@ fun AttendanceSummary(attendanceData: Map<LocalDate, String>, summaryUpToDate: L
             .padding(top = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        Text(text = "Total Present: $presentCount", fontSize = 14.sp, color = Color.Black)
-        Text(text = "Total Late: $lateCount", fontSize = 14.sp, color = Color.Black)
-        Text(text = "Total Absent: $absentCount", fontSize = 14.sp, color = Color.Black)
+        Text(text = "Total Present: $presentCount", fontSize = 14.sp, color = Color.White)
+        Text(text = "Total Late: $lateCount", fontSize = 14.sp, color = Color.White)
+        Text(text = "Total Absent: $absentCount", fontSize = 14.sp, color = Color.White)
     }
 }
 

@@ -53,7 +53,7 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFFFA726))
+            .background(Color.White)
             .padding(start = 12.dp, end = 12.dp, top = 32.dp, bottom = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -72,12 +72,12 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
                 Icon(
                     imageVector = Icons.Default.ArrowBack,
                     contentDescription = "Back",
-                    tint = Color.Black,
+                    tint = Color(0xFFFFA726),
                     modifier = Modifier.size(28.dp)
                 )
             }
             Spacer(modifier = Modifier.width(8.dp))
-            TitleText("Attendance Dashboard", 24)
+            TitleText("Attendance Dashboard", 24, Color.Black)
         }
         Card(
             modifier = Modifier
@@ -86,7 +86,7 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
                 .align(Alignment.CenterHorizontally),
             shape = RoundedCornerShape(50),
             elevation = CardDefaults.cardElevation(6.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFA726))
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
@@ -95,14 +95,14 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
                 Icon(
                     imageVector = Icons.Default.CalendarToday,
                     contentDescription = "Date",
-                    tint = Color(0xFFFFA726),
+                    tint = Color.White,
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = currentDate,
                     fontSize = 16.sp,
-                    color = Color(0xFF757575),
+                    color = Color.White,
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -114,7 +114,7 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
             shape = RoundedCornerShape(18.dp),
             elevation = CardDefaults.cardElevation(12.dp),
             border = BorderStroke(1.dp, Color(0x1A000000)),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFA726))
         ) {
             Column(
                 modifier = Modifier
@@ -135,7 +135,7 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
 }
 
 @Composable
-fun TitleText(text: String, size: Int, color: Color = Color.Black) {
+fun TitleText(text: String, size: Int, color: Color = Color(0xFFFFA726)) {
     Text(
         text = text,
         fontSize = size.sp,
@@ -173,7 +173,7 @@ fun StatusCard(status: String, viewModel: AttendanceViewModel, context: android.
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             when (status) {
-                "loading" -> CircularProgressIndicator()
+                "loading" -> CircularProgressIndicator(color = Color(0xFFFFA726))
 
                 "none" -> {
                     TitleText("Not Checked In", 18, Color.Gray)
@@ -181,13 +181,13 @@ fun StatusCard(status: String, viewModel: AttendanceViewModel, context: android.
                         text = "Check In",
                         loading = viewModel.loading,
                         onClick = { viewModel.performCheckIn(context) },
-                        backgroundColor = Color(0xFF4CAF50)
+                        backgroundColor = Color(0xFFFFA726)
                     )
                 }
 
                 "checked_in" -> {
                     TitleText("Checked In", 18, Color(0xFF4CAF50))
-                    InfoText("Time: ${formatIsoToTime(viewModel.checkInTime)}")
+                    InfoText("Time: ${formatIsoToTime(viewModel.checkInTime)}", color = Color.Gray)
                     LoadingButton(
                         text = "Check Out",
                         loading = viewModel.loading,
@@ -203,16 +203,18 @@ fun StatusCard(status: String, viewModel: AttendanceViewModel, context: android.
                             formatIsoToTime(
                                 viewModel.checkInTime
                             )
-                        }"
+                        }",
+                        color = Color.Gray
                     )
                     InfoText(
                         "Check Out: ${formatIsoToDate(viewModel.checkOutTime)} ${
                             formatIsoToTime(
                                 viewModel.checkOutTime
                             )
-                        }"
+                        }",
+                        color = Color.Gray
                     )
-                    viewModel.workingHours?.let { InfoText("Working Hours: $it") }
+                    viewModel.workingHours?.let { InfoText("Working Hours: $it", color = Color.Gray) }
                 }
             }
         }
@@ -241,11 +243,11 @@ fun LoadingButton(text: String, loading: Boolean, onClick: () -> Unit, backgroun
 }
 
 @Composable
-fun InfoText(text: String) {
+fun InfoText(text: String, color: Color = Color.Gray) {
     Text(
         text = text,
         fontSize = 14.sp,
-        color = Color.Gray
+        color = color
     )
 }
 
@@ -266,7 +268,7 @@ fun CalendarCard(viewModel: AttendanceViewModel) {
             .fillMaxWidth()
             .padding(vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFA726))
     ) {
         Column(
             modifier = Modifier
@@ -274,7 +276,7 @@ fun CalendarCard(viewModel: AttendanceViewModel) {
                 .fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            TitleText("Attendance Calendar", 18)
+            TitleText("Attendance Calendar", 18, Color.White)
             Spacer(modifier = Modifier.height(8.dp))
 
             ModernCalendar(
