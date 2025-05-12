@@ -42,7 +42,18 @@ class TokenManager(context: Context) {
     }
 
     // Retrieve the token from shared preferences
-    fun getToken(): String? = sharedPreferences.getString(KEY_TOKEN, null)
+    fun getToken(): String? {
+        val token = sharedPreferences.getString(KEY_TOKEN, null)
+        val expiration = sharedPreferences.getLong(KEY_TOKEN_EXPIRATION, 0)
+
+        // If token is expired, clear it and return null
+        if (token != null && System.currentTimeMillis() > expiration) {
+            clearAuthData()
+            return null
+        }
+
+        return token
+    }
 
     // Retrieve user data from shared preferences
     fun getUserData(): UserData? {
@@ -50,6 +61,13 @@ class TokenManager(context: Context) {
         val userName = sharedPreferences.getString(KEY_USER_NAME, null)
         val userEmail = sharedPreferences.getString(KEY_USER_EMAIL, null)
         val userRole = sharedPreferences.getString(KEY_USER_ROLE, null)
+        val expiration = sharedPreferences.getLong(KEY_TOKEN_EXPIRATION, 0)
+
+        // If data is expired, clear it and return null
+        if (System.currentTimeMillis() > expiration) {
+            clearAuthData()
+            return null
+        }
 
         return if (userId != -1 && userName != null && userEmail != null && userRole != null) {
             UserData(userId, userName, userEmail, userRole)
@@ -63,11 +81,23 @@ class TokenManager(context: Context) {
 
     // Check if the user is logged in and if the token is still valid
     fun isLoggedIn(): Boolean {
-        val tokenExpiration = sharedPreferences.getLong(KEY_TOKEN_EXPIRATION, 0)
+        val token = getToken()
+        val expiration = sharedPreferences.getLong(KEY_TOKEN_EXPIRATION, 0)
         val currentTime = System.currentTimeMillis()
 
-        // If the token exists and is not expired
-        return getToken() != null && tokenExpiration > currentTime
+        // If token exists and is not expired
+        return token != null && expiration > currentTime
+    }
+
+    // Add this function to get the current user id
+    fun getUserId(): Int? {
+        val userId = sharedPreferences.getInt(KEY_USER_ID, -1)
+        val expiration = sharedPreferences.getLong(KEY_TOKEN_EXPIRATION, 0)
+        if (System.currentTimeMillis() > expiration) {
+            clearAuthData()
+            return null
+        }
+        return if (userId != -1) userId else null
     }
 }
 

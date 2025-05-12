@@ -39,6 +39,13 @@ class AuthViewModel(context: Context) : ViewModel() {
     private val _rolesError = MutableStateFlow<String?>(null)
     val rolesError: StateFlow<String?> = _rolesError
 
+    init {
+        // Check token validity on initialization
+        if (!tokenManager.isLoggedIn()) {
+            _authState.value = AuthState.Error("Please login to continue")
+        }
+    }
+
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
@@ -124,10 +131,14 @@ class AuthViewModel(context: Context) : ViewModel() {
                     tokenManager.clearAuthData()
                     _authState.value = AuthState.Success("Logout successful")
                 } else {
-                    _authState.value = AuthState.Error("Logout failed: ${response.message()}")
+                    // Even if the API call fails, clear local auth data
+                    tokenManager.clearAuthData()
+                    _authState.value = AuthState.Success("Logout successful")
                 }
             } catch (e: Exception) {
-                _authState.value = AuthState.Error("Logout failed: ${e.localizedMessage ?: "Unknown error"}")
+                // Even if there's an exception, clear local auth data
+                tokenManager.clearAuthData()
+                _authState.value = AuthState.Success("Logout successful")
             }
         }
     }
@@ -159,5 +170,11 @@ class AuthViewModel(context: Context) : ViewModel() {
         _selectedRole.value = _roles.value.find { it.id == roleId }
     }
 
-    fun isLoggedIn(): Boolean = tokenManager.isLoggedIn()
+    fun isLoggedIn(): Boolean {
+        val isLoggedIn = tokenManager.isLoggedIn()
+        if (!isLoggedIn) {
+            _authState.value = AuthState.Error("Please login to continue")
+        }
+        return isLoggedIn
+    }
 }

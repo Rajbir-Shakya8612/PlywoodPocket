@@ -57,8 +57,15 @@ class AttendanceViewModel(
                     }
                 }
             } else {
-                attendanceStatus = "none"
-                errorMessage = "Failed to fetch attendance status"
+                val errorBody = response.errorBody()?.string()
+                if (response.code() == 401 || errorBody?.contains("Unauthenticated", ignoreCase = true) == true) {
+                    tokenManager.clearAuthData()
+                    errorMessage = "Session expired. Please login again."
+                    attendanceStatus = "none"
+                } else {
+                    attendanceStatus = "none"
+                    errorMessage = "Failed to fetch attendance status"
+                }
             }
         } catch (e: Exception) {
             attendanceStatus = "none"
@@ -102,8 +109,15 @@ class AttendanceViewModel(
                     startLocationTracking(context)
                     fetchAttendanceStatus() // Refresh status after check-in
                 } else {
-                    errorMessage = "Check-in failed: ${response.errorBody()?.string()}"
-                    attendanceStatus = "none"
+                    val errorBody = response.errorBody()?.string()
+                    if (response.code() == 401 || errorBody?.contains("Unauthenticated", ignoreCase = true) == true) {
+                        tokenManager.clearAuthData()
+                        errorMessage = "Session expired. Please login again."
+                        attendanceStatus = "none"
+                    } else {
+                        errorMessage = "Check-in failed: $errorBody"
+                        attendanceStatus = "none"
+                    }
                 }
             } else {
                 errorMessage = "Could not get location. Please ensure location services are enabled."
@@ -151,8 +165,15 @@ class AttendanceViewModel(
                     stopLocationTracking(context)
                     fetchAttendanceStatus() // Refresh status after check-out
                 } else {
-                    errorMessage = "Check-out failed: ${response.errorBody()?.string()}"
-                    attendanceStatus = "checked_in"
+                    val errorBody = response.errorBody()?.string()
+                    if (response.code() == 401 || errorBody?.contains("Unauthenticated", ignoreCase = true) == true) {
+                        tokenManager.clearAuthData()
+                        errorMessage = "Session expired. Please login again."
+                        attendanceStatus = "checked_in"
+                    } else {
+                        errorMessage = "Check-out failed: $errorBody"
+                        attendanceStatus = "checked_in"
+                    }
                 }
             } else {
                 errorMessage = "Could not get location. Please ensure location services are enabled."

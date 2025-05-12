@@ -212,7 +212,8 @@ fun LeadsScreen(
                                     // Scrollable leads list
                                     Box(
                                         modifier = Modifier
-                                            .weight(1f, fill = false)
+                                            .fillMaxWidth()
+                                            .weight(1f)
                                             .verticalScroll(rememberScrollState())
                                     ) {
                                         if (statusLeads.isEmpty()) {
@@ -461,35 +462,6 @@ fun LeadCardWhite(
                         modifier = Modifier.size(24.dp)
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun AppNavHost(activity: MainActivity) {
-    val navController = rememberNavController()
-    val context = LocalContext.current
-    // Handle notification intent
-    LaunchedEffect(Unit) {
-        val intent = activity.intent
-        if (intent?.getBooleanExtra("navigate_to_followup_detail", false) == true) {
-            val leadId = intent.getIntExtra("lead_id", -1)
-            if (leadId != -1) {
-                navController.navigate("followup_detail/$leadId")
-            }
-            // Clear the intent so it doesn't trigger again
-            intent.removeExtra("navigate_to_followup_detail")
-            intent.removeExtra("lead_id")
-        }
-    }
-    NavHost(navController, startDestination = "dashboard") {
-        composable("dashboard") { MainScreen(activity) }
-        composable("leads") { LeadsScreen(onBack = { navController.popBackStack() }, navController = navController) }
-        composable("followup_detail/{leadId}") { backStackEntry ->
-            val leadId = backStackEntry.arguments?.getString("leadId")?.toIntOrNull()
-            if (leadId != null) {
-                FollowUpDetailScreen(leadId = leadId, navController = navController)
             }
         }
     }

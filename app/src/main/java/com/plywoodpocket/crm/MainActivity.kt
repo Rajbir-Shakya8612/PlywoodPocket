@@ -45,6 +45,8 @@ import java.util.Date
 import java.util.Locale
 import com.plywoodpocket.crm.utils.WorkManagerScheduler
 import com.plywoodpocket.crm.screens.AppNavHost
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavController
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,6 +63,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(activity: MainActivity) {
     val context = LocalContext.current
+    val navController = rememberNavController()
     val authViewModel: AuthViewModel = viewModel(factory = com.plywoodpocket.crm.viewmodel.AuthViewModelFactory(context))
     var showLogin by remember { mutableStateOf(!authViewModel.isLoggedIn()) }
     var showRegister by remember { mutableStateOf(false) }
@@ -69,6 +72,58 @@ fun MainScreen(activity: MainActivity) {
     var showAttendanceScreen by remember { mutableStateOf(false) }
     var showLeadsScreen by remember { mutableStateOf(false) }
     val authState by authViewModel.authState.collectAsState()
+
+    // Observe AttendanceViewModel error for session expiration
+    val attendanceViewModel: com.plywoodpocket.crm.viewmodel.AttendanceViewModel = viewModel()
+    val attendanceError = attendanceViewModel.errorMessage
+
+    LaunchedEffect(attendanceError) {
+        if (attendanceError == "Session expired. Please login again.") {
+            showLogin = true
+            showRegister = false
+            showAttendanceScreen = false
+            showLeadsScreen = false
+        }
+    }
+
+    // Check authentication state on app start and when auth state changes
+    LaunchedEffect(authState) {
+        when (authState) {
+            is AuthState.Success -> {
+                val msg = (authState as AuthState.Success).message
+                when {
+                    msg.contains("Login successful", ignoreCase = true) -> {
+                        showLogin = false
+                        showRegister = false
+                        showAttendanceScreen = false
+                        showLeadsScreen = false
+                    }
+                    msg.contains("Registration successful", ignoreCase = true) -> {
+                        showRegister = false
+                        showLogin = true
+                    }
+                    msg.contains("Logout successful", ignoreCase = true) -> {
+                        showLogin = true
+                        showRegister = false
+                        showAttendanceScreen = false
+                        showLeadsScreen = false
+                    }
+                }
+            }
+            is AuthState.Error -> {
+                val errorMsg = (authState as AuthState.Error).message
+                if (errorMsg.contains("Unauthenticated", ignoreCase = true) || 
+                    errorMsg.contains("Please login", ignoreCase = true)) {
+                    showLogin = true
+                    showRegister = false
+                    showAttendanceScreen = false
+                    showLeadsScreen = false
+                }
+                Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
+            }
+            else -> {}
+        }
+    }
 
     // Check location services on app start
     LaunchedEffect(Unit) {
@@ -98,53 +153,13 @@ fun MainScreen(activity: MainActivity) {
         }
     }
 
-    // Handle auth state changes
-    LaunchedEffect(authState) {
-        when (authState) {
-            is AuthState.Success -> {
-                Toast.makeText(context, (authState as AuthState.Success).message, Toast.LENGTH_SHORT).show()
-                val msg = (authState as AuthState.Success).message
-                if (msg.contains("Login successful", ignoreCase = true)) {
-                    showLogin = false
-                    showRegister = false
-                    showAttendanceScreen = false
-                    showLeadsScreen = false
-                } else if (msg.contains("Registration successful", ignoreCase = true)) {
-                    showRegister = false
-                    showLogin = true
-                }
-            }
-            is AuthState.Error -> {
-                Toast.makeText(context, (authState as AuthState.Error).message, Toast.LENGTH_SHORT).show()
-            }
-            else -> {}
-        }
-    }
-
     PlywoodPocketTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = Color.Transparent
         ) {
             when {
-                showLeadsScreen -> {
-                    com.plywoodpocket.crm.screens.LeadsScreen(onBack = { showLeadsScreen = false })
-                }
-                showAttendanceScreen -> {
-                    val apiClient = ApiClient(TokenManager(context))
-                    val attendanceViewModel: com.plywoodpocket.crm.viewmodel.AttendanceViewModel = viewModel(
-                        factory = com.plywoodpocket.crm.viewmodel.AttendanceViewModelFactory(
-                            context.applicationContext as android.app.Application,
-                            com.plywoodpocket.crm.utils.TokenManager(context),
-                            apiClient.apiService
-                        )
-                    )
-                    com.plywoodpocket.crm.screens.AttendanceScreen(
-                        viewModel = attendanceViewModel,
-                        onBack = { showAttendanceScreen = false }
-                    )
-                }
-                showLogin || showRegister -> {
+                !authViewModel.isLoggedIn() || showLogin || showRegister -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -198,9 +213,9 @@ fun MainScreen(activity: MainActivity) {
                 }
                 else -> {
                     DashboardScreen(
+                        navController = navController,
                         onLogout = {
                             authViewModel.logout()
-                            showLogin = true
                         },
                         onAttendanceClick = { showAttendanceScreen = true },
                         onLeadsClick = { showLeadsScreen = true }
@@ -231,7 +246,12 @@ fun MainScreen(activity: MainActivity) {
 }
 
 @Composable
-fun DashboardScreen(onLogout: () -> Unit, onAttendanceClick: () -> Unit, onLeadsClick: () -> Unit) {
+fun DashboardScreen(
+    navController: NavController,
+    onLogout: () -> Unit,
+    onAttendanceClick: () -> Unit,
+    onLeadsClick: () -> Unit
+) {
     var selectedTab by remember { mutableStateOf(0) }
     var selectedIndex by remember { mutableStateOf(2) }
     var searchQuery by remember { mutableStateOf("") }
@@ -260,7 +280,8 @@ fun DashboardScreen(onLogout: () -> Unit, onAttendanceClick: () -> Unit, onLeads
             setSelectedIndex = { selectedIndex = it },
             selectedTab = selectedTab,
             setSelectedTab = { selectedTab = it },
-            onLogout = onLogout,
+            onProfileClick = { navController.navigate("profile") },
+            onLogout = { onLogout() },
             modifier = Modifier.navigationBarsPadding()
         )
     }
@@ -492,6 +513,7 @@ fun BottomNavBar(
     setSelectedIndex: (Int) -> Unit,
     selectedTab: Int,
     setSelectedTab: (Int) -> Unit,
+    onProfileClick: () -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -518,12 +540,13 @@ fun BottomNavBar(
                 setSelectedIndex(2)
                 setSelectedTab(0)
             }
-            BottomNavItem(Icons.Filled.ShoppingCart, "Offers", selectedIndex == 3) {
+            BottomNavItem(Icons.Filled.Logout, "Logout", selectedIndex == 3) {
                 setSelectedIndex(3)
+                onLogout()
             }
             BottomNavItem(Icons.Filled.Person, "Profile", selectedIndex == 4) {
                 setSelectedIndex(4)
-                onLogout()
+                onProfileClick()
             }
         }
     }
