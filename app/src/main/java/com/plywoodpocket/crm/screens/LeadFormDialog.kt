@@ -1,6 +1,7 @@
 package com.plywoodpocket.crm.screens
 
 import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.Context
 import android.location.Location
 import androidx.compose.foundation.background
@@ -128,7 +129,7 @@ fun LeadFormDialog(
                             val datePicker = DatePickerDialog(
                                 context,
                                 { _, y, m, d ->
-                                    val sdf = SimpleDateFormat("dd-MM-yyyy", Locale("en", "IN"))
+                                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale("en", "IN"))
                                     cal.set(y, m, d)
                                     followUpDate = sdf.format(cal.time)
                                 },

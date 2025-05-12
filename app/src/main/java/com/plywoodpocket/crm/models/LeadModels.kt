@@ -126,6 +126,6 @@ data class LeadFollowUp(
     val email: String?,
     val company: String?,
     val is_overdue: Boolean?,
-    val days_left: Int?,
+    val days_left: Double?,
     val readable_diff: String?
 )

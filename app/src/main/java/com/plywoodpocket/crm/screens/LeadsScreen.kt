@@ -62,6 +62,9 @@ import com.plywoodpocket.crm.api.ApiClient
 import com.plywoodpocket.crm.utils.TokenManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -499,10 +502,10 @@ fun FollowUpDetailScreen(leadId: Int, navController: NavController) {
     var statuses by remember { mutableStateOf<List<com.plywoodpocket.crm.models.LeadStatus>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    var showScheduleCard by remember { mutableStateOf(false) }
     var scheduleDate by remember { mutableStateOf("") }
     var scheduleNotes by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val calendar = remember { Calendar.getInstance() }
 
     LaunchedEffect(leadId) {
         loading = true
@@ -537,19 +540,29 @@ fun FollowUpDetailScreen(leadId: Int, navController: NavController) {
                 .background(White)
                 .padding(16.dp)
         ) {
-            Text("Lead Details", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.Gray)
-            Spacer(Modifier.height(8.dp))
-            Text("Name: ${l.name}", color = Color.Black)
-            Text("Phone: ${l.phone}", color = Color.Black)
-            Text("Email: ${l.email}", color = Color.Black)
-            Text("Address: ${l.address}", color = Color.Black)
-            Text("Status: ${l.status?.name ?: "-"}", color = Color.Black)
-            Text("Follow-up: ${l.follow_up_date?.let { formatDate(it) } ?: "-"}", color = Color.Black)
-            if (!l.notes.isNullOrBlank()) Text("Notes: ${l.notes}", color = Color.Black)
-            if (!l.description.isNullOrBlank()) Text("Description: ${l.description}", color = Color.Black)
-            if (!l.company.isNullOrBlank()) Text("Company: ${l.company}", color = Color.Black)
-            if (!l.additional_info.isNullOrBlank()) Text("Additional Info: ${l.additional_info}", color = Color.Black)
-            if (!l.source.isNullOrBlank()) Text("Source: ${l.source}", color = Color.Black)
+            // Lead Details Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Lead Details", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.Gray)
+                    Spacer(Modifier.height(8.dp))
+                    DetailRow(label = "Name", value = l.name)
+                    DetailRow(label = "Phone", value = l.phone)
+                    DetailRow(label = "Email", value = l.email)
+                    DetailRow(label = "Address", value = l.address)
+                    DetailRow(label = "Status", value = l.status?.name ?: "-")
+                    DetailRow(label = "Follow-up", value = l.follow_up_date?.let { formatDate(it) } ?: "-")
+                    if (!l.notes.isNullOrBlank()) DetailRow(label = "Notes", value = l.notes)
+                    if (!l.description.isNullOrBlank()) DetailRow(label = "Description", value = l.description)
+                    if (!l.company.isNullOrBlank()) DetailRow(label = "Company", value = l.company)
+                    if (!l.additional_info.isNullOrBlank()) DetailRow(label = "Additional Info", value = l.additional_info)
+                    if (!l.source.isNullOrBlank()) DetailRow(label = "Source", value = l.source)
+                }
+            }
             Spacer(Modifier.height(16.dp))
             // Schedule Follow Up Card
             Card(
@@ -567,13 +580,38 @@ fun FollowUpDetailScreen(leadId: Int, navController: NavController) {
                         label = { Text("Date & Time (dd-MM-yyyy HH:mm)*") },
                         trailingIcon = {
                             IconButton(onClick = {
-                                // Date picker logic (for simplicity, just let user type for now)
+                                val now = Calendar.getInstance()
+                                DatePickerDialog(
+                                    context,
+                                    { _, year, month, dayOfMonth ->
+                                        calendar.set(Calendar.YEAR, year)
+                                        calendar.set(Calendar.MONTH, month)
+                                        calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                                        // After date, show time picker
+                                        TimePickerDialog(
+                                            context,
+                                            { _, hour, minute ->
+                                                calendar.set(Calendar.HOUR_OF_DAY, hour)
+                                                calendar.set(Calendar.MINUTE, minute)
+                                                val sdf = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault())
+                                                scheduleDate = sdf.format(calendar.time)
+                                            },
+                                            now.get(Calendar.HOUR_OF_DAY),
+                                            now.get(Calendar.MINUTE),
+                                            true
+                                        ).show()
+                                    },
+                                    now.get(Calendar.YEAR),
+                                    now.get(Calendar.MONTH),
+                                    now.get(Calendar.DAY_OF_MONTH)
+                                ).show()
                             }) {
                                 Icon(Icons.Default.DateRange, contentDescription = "Pick date")
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        readOnly = true
                     )
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
@@ -612,6 +650,14 @@ fun FollowUpDetailScreen(leadId: Int, navController: NavController) {
                 }
             }
         }
+    }
+}
+
+@Composable
+fun DetailRow(label: String, value: String?) {
+    Row(Modifier.padding(vertical = 2.dp)) {
+        Text("$label: ", fontWeight = FontWeight.Bold, color = Color.Black)
+        Text(value ?: "-", color = Color.DarkGray)
     }
 }
 
