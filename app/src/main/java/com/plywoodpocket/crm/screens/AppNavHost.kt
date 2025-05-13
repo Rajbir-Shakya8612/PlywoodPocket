@@ -21,7 +21,7 @@ import com.plywoodpocket.crm.DashboardScreen
 @Composable
 fun AppNavHost(activity: MainActivity) {
     val navController = rememberNavController()
-    var showLogin by remember { mutableStateOf(true) }
+    var showLogin by remember { mutableStateOf(false) }
     val authViewModel: AuthViewModel = remember { AuthViewModel(activity) }
     val context = activity.applicationContext
 

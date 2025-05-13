@@ -15,7 +15,7 @@ object WorkManagerScheduler {
             .setRequiresBatteryNotLow(true)
             .build()
 
-        val workRequest = PeriodicWorkRequestBuilder<LocationTrackingWorker>(15, TimeUnit.MINUTES).build()
+        val workRequest = PeriodicWorkRequestBuilder<LocationTrackingWorker>(5, TimeUnit.MINUTES).build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             "LocationTracking",
             ExistingPeriodicWorkPolicy.REPLACE,
@@ -41,7 +41,7 @@ object WorkManagerScheduler {
         // Schedule periodic work request
         val periodicWorkRequest = PeriodicWorkRequestBuilder<FollowUpReminderWorker>(
             15, TimeUnit.MINUTES,
-            15, TimeUnit.MINUTES // Flex interval
+            15, TimeUnit.MINUTES
         )
             .setConstraints(constraints)
             .build()
