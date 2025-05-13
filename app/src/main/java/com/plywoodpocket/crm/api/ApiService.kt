@@ -38,6 +38,21 @@ interface ApiService {
     @POST("api/location/tracks")
     suspend fun trackLocation(@Body locationData: LocationData): Response<Any>
 
+    @Headers("Accept: application/json")
+    @GET("api/users/profile")
+    suspend fun getUserProfile(): Response<UserProfile>
+
+    @Headers("Accept: application/json")
+    @GET("api/users/{user}")
+    suspend fun getUser(@Path("user") userId: Int): Response<UserProfileResponse>
+
+    @Headers("Accept: application/json")
+    @PUT("api/users/{user}")
+    suspend fun updateUser(
+        @Path("user") userId: Int,
+        @Body request: UpdateUserRequest
+    ): Response<UserProfileResponse>
+
     // Leads API
     @Headers("Accept: application/json")
     @GET("api/salesperson/leads")
@@ -46,6 +61,11 @@ interface ApiService {
     @Headers("Accept: application/json")
     @POST("api/salesperson/leads")
     suspend fun createLead(@Body request: LeadRequest): Response<LeadResponse>
+
+
+    @Headers("Accept: application/json")
+    @GET("api/salesperson/leads/follow-ups")
+    suspend fun getFollowUps(): Response<FollowUpsResponse>
 
     @Headers("Accept: application/json")
     @GET("api/salesperson/leads/{lead}")
@@ -83,22 +103,5 @@ interface ApiService {
     @POST("api/salesperson/leads/{lead}/complete-follow-up")
     suspend fun completeFollowUp(@Path("lead") leadId: Int, @Body request: CompleteFollowUpRequest): Response<Any>
 
-    @Headers("Accept: application/json")
-    @GET("api/salesperson/leads/follow-ups")
-    suspend fun getFollowUps(): Response<FollowUpsResponse>
 
-    @Headers("Accept: application/json")
-    @GET("api/users/profile")
-    suspend fun getUserProfile(): Response<UserProfile>
-
-    @Headers("Accept: application/json")
-    @GET("api/users/{user}")
-    suspend fun getUser(@Path("user") userId: Int): Response<UserProfileResponse>
-
-    @Headers("Accept: application/json")
-    @PUT("api/users/{user}")
-    suspend fun updateUser(
-        @Path("user") userId: Int,
-        @Body request: UpdateUserRequest
-    ): Response<UserProfileResponse>
 } 

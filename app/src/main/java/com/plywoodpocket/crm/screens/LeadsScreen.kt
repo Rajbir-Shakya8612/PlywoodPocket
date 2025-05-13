@@ -65,6 +65,7 @@ import kotlinx.coroutines.withContext
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import java.util.Calendar
+import android.widget.Toast
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -193,7 +194,11 @@ fun LeadsScreen(
                                         ) {
                                             Text(
                                                 statusLeads.size.toString(),
-                                                color = Color(android.graphics.Color.parseColor(status.color)),
+                                                color = Color(
+                                                    android.graphics.Color.parseColor(
+                                                        status.color
+                                                    )
+                                                ),
                                                 fontWeight = FontWeight.Bold
                                             )
                                         }
@@ -240,13 +245,16 @@ fun LeadsScreen(
                                                             context.startActivity(intent)
                                                         },
                                                         onWhatsApp = {
-                                                            val phoneNumber = if (lead.phone.startsWith("+91")) {
-                                                                lead.phone
-                                                            } else {
-                                                                "+91${lead.phone}"
-                                                            }
-                                                            val uri = Uri.parse("https://wa.me/${phoneNumber}")
-                                                            val intent = Intent(Intent.ACTION_VIEW, uri)
+                                                            val phoneNumber =
+                                                                if (lead.phone.startsWith("+91")) {
+                                                                    lead.phone
+                                                                } else {
+                                                                    "+91${lead.phone}"
+                                                                }
+                                                            val uri =
+                                                                Uri.parse("https://wa.me/${phoneNumber}")
+                                                            val intent =
+                                                                Intent(Intent.ACTION_VIEW, uri)
                                                             context.startActivity(intent)
                                                         },
                                                         onDelete = {
@@ -468,6 +476,25 @@ fun LeadCardWhite(
 }
 
 @Composable
+fun DetailRow(label: String, value: String?) {
+    Row(Modifier.padding(vertical = 2.dp)) {
+        Text("$label: ", fontWeight = FontWeight.Bold, color = Color.Black)
+        Text(value ?: "-", color = Color.DarkGray)
+    }
+}
+
+fun convertToApiDate(dateStr: String): String {
+    return try {
+        val input = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault())
+        val output = SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault())
+        output.format(input.parse(dateStr) ?: return dateStr)
+    } catch (e: Exception) {
+        dateStr
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun FollowUpDetailScreen(leadId: Int, navController: NavController) {
     val context = LocalContext.current
     var lead by remember { mutableStateOf<com.plywoodpocket.crm.models.Lead?>(null) }
@@ -478,168 +505,235 @@ fun FollowUpDetailScreen(leadId: Int, navController: NavController) {
     var scheduleNotes by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val calendar = remember { Calendar.getInstance() }
+    val tokenManager = remember { TokenManager(context) }
+    val apiClient = remember { ApiClient(tokenManager) }
+
+    // Move date picker logic to a separate function
+    fun showDatePicker(onDateSelected: (String) -> Unit) {
+        val now = Calendar.getInstance()
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                calendar.set(Calendar.YEAR, year)
+                calendar.set(Calendar.MONTH, month)
+                calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                // After date, show time picker
+                TimePickerDialog(
+                    context,
+                    { _, hour, minute ->
+                        calendar.set(Calendar.HOUR_OF_DAY, hour)
+                        calendar.set(Calendar.MINUTE, minute)
+                        val sdf = SimpleDateFormat(
+                            "dd-MM-yyyy HH:mm",
+                            Locale.getDefault()
+                        )
+                        onDateSelected(sdf.format(calendar.time))
+                    },
+                    now.get(Calendar.HOUR_OF_DAY),
+                    now.get(Calendar.MINUTE),
+                    true
+                ).show()
+            },
+            now.get(Calendar.YEAR),
+            now.get(Calendar.MONTH),
+            now.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
 
     LaunchedEffect(leadId) {
-        loading = true
-        error = null
         try {
-            val api = ApiClient(TokenManager(context)).apiService
-            val response = withContext(Dispatchers.IO) { api.getLead(leadId) }
+            loading = true
+            error = null
+            val response = apiClient.apiService.getLead(leadId)
             if (response.isSuccessful) {
-                lead = response.body()?.lead
-                statuses = response.body()?.lead_statuses ?: emptyList()
+                lead = response.body()?.lead  // Extract lead from LeadResponse
+                // Fetch statuses after getting lead
+                val statusesResponse = apiClient.apiService.getRoles()  // Changed to getRoles() as per ApiService
+                if (statusesResponse.isSuccessful) {
+                    statuses = statusesResponse.body()?.map { role ->
+                        com.plywoodpocket.crm.models.LeadStatus(
+                            id = role.id,
+                            name = role.name,
+                            color = "#1976D2"  // Default color
+                        )
+                    } ?: emptyList()
+                } else {
+                    error = "Failed to load statuses: ${statusesResponse.message()}"
+                }
             } else {
-                error = response.message()
+                error = "Failed to load lead: ${response.message()}"
             }
         } catch (e: Exception) {
-            error = e.localizedMessage
+            error = "Error: ${e.message}"
+        } finally {
+            loading = false
         }
-        loading = false
     }
 
-    if (loading) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        return
-    }
-    if (error != null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(error!!, color = Color.Red) }
-        return
-    }
-    lead?.let { l ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .background(White)
-                .padding(16.dp)
-        ) {
-            // Lead Details Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Lead Details", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.Gray)
-                    Spacer(Modifier.height(8.dp))
-                    DetailRow(label = "Name", value = l.name)
-                    DetailRow(label = "Phone", value = l.phone)
-                    DetailRow(label = "Email", value = l.email)
-                    DetailRow(label = "Address", value = l.address)
-                    DetailRow(label = "Status", value = l.status?.name ?: "-")
-                    DetailRow(label = "Follow-up", value = l.follow_up_date?.let { formatDate(it) } ?: "-")
-                    if (!l.notes.isNullOrBlank()) DetailRow(label = "Notes", value = l.notes)
-                    if (!l.description.isNullOrBlank()) DetailRow(label = "Description", value = l.description)
-                    if (!l.company.isNullOrBlank()) DetailRow(label = "Company", value = l.company)
-                    if (!l.additional_info.isNullOrBlank()) DetailRow(label = "Additional Info", value = l.additional_info)
-                    if (!l.source.isNullOrBlank()) DetailRow(label = "Source", value = l.source)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Follow-up Details", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
                 }
-            }
-            Spacer(Modifier.height(16.dp))
-            // Schedule Follow Up Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, Color(0xFF2196F3)),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("Schedule Follow Up", fontWeight = FontWeight.Bold, color = Color(0xFF2196F3), fontSize = 18.sp)
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = scheduleDate,
-                        onValueChange = { scheduleDate = it },
-                        label = { Text("Date & Time (dd-MM-yyyy HH:mm)*") },
-                        trailingIcon = {
-                            IconButton(onClick = {
-                                val now = Calendar.getInstance()
-                                DatePickerDialog(
-                                    context,
-                                    { _, year, month, dayOfMonth ->
-                                        calendar.set(Calendar.YEAR, year)
-                                        calendar.set(Calendar.MONTH, month)
-                                        calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
-                                        // After date, show time picker
-                                        TimePickerDialog(
-                                            context,
-                                            { _, hour, minute ->
-                                                calendar.set(Calendar.HOUR_OF_DAY, hour)
-                                                calendar.set(Calendar.MINUTE, minute)
-                                                val sdf = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault())
-                                                scheduleDate = sdf.format(calendar.time)
-                                            },
-                                            now.get(Calendar.HOUR_OF_DAY),
-                                            now.get(Calendar.MINUTE),
-                                            true
-                                        ).show()
-                                    },
-                                    now.get(Calendar.YEAR),
-                                    now.get(Calendar.MONTH),
-                                    now.get(Calendar.DAY_OF_MONTH)
-                                ).show()
-                            }) {
-                                Icon(Icons.Default.DateRange, contentDescription = "Pick date")
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        readOnly = true
+            )
+        }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(White)
+        ) {
+            if (loading) {
+                Box(
+                    Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator() }
+            } else if (error != null) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        error!!,
+                        color = Color.Red
                     )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = scheduleNotes,
-                        onValueChange = { scheduleNotes = it },
-                        label = { Text("Notes") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Button(
-                        onClick = {
-                            // Call schedule follow up API
-                            scope.launch {
-                                val api = ApiClient(TokenManager(context)).apiService
-                                val req = com.plywoodpocket.crm.models.FollowUpRequest(
-                                    next_follow_up = convertToApiDate(scheduleDate),
-                                    notes = scheduleNotes
+                }
+            } else {
+                lead?.let { l ->
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .background(White)
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        // Lead Details Card
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                        ) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text(
+                                    "Lead Details",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 20.sp,
+                                    color = Color.Gray
                                 )
-                                val resp = withContext(Dispatchers.IO) { api.scheduleFollowUp(leadId, req) }
-                                if (resp.isSuccessful) {
-                                    // Refresh lead details
-                                    val response = withContext(Dispatchers.IO) { api.getLead(leadId) }
-                                    if (response.isSuccessful) {
-                                        lead = response.body()?.lead
-                                    }
-                                    scheduleDate = ""
-                                    scheduleNotes = ""
+                                Spacer(Modifier.height(8.dp))
+                                DetailRow(label = "Name", value = l.name)
+                                DetailRow(label = "Phone", value = l.phone)
+                                DetailRow(label = "Email", value = l.email)
+                                DetailRow(label = "Address", value = l.address)
+                                DetailRow(label = "Status", value = l.status?.name ?: "-")
+                                DetailRow(
+                                    label = "Follow-up",
+                                    value = l.follow_up_date?.let { formatDate(it) } ?: "-")
+                                if (!l.notes.isNullOrBlank()) DetailRow(label = "Notes", value = l.notes)
+                                if (!l.description.isNullOrBlank()) DetailRow(
+                                    label = "Description",
+                                    value = l.description
+                                )
+                                if (!l.company.isNullOrBlank()) DetailRow(label = "Company", value = l.company)
+                                if (!l.additional_info.isNullOrBlank()) DetailRow(
+                                    label = "Additional Info",
+                                    value = l.additional_info
+                                )
+                                if (!l.source.isNullOrBlank()) DetailRow(label = "Source", value = l.source)
+                            }
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        // Schedule Follow Up Card
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color(0xFF2196F3)),
+                            colors = CardDefaults.cardColors(containerColor = Color.White)
+                        ) {
+                            Column(Modifier.padding(16.dp)) {
+                                Text(
+                                    "Schedule Follow Up",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF2196F3),
+                                    fontSize = 18.sp
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = scheduleDate,
+                                    onValueChange = { scheduleDate = it },
+                                    label = { Text("Date & Time (dd-MM-yyyy HH:mm)*") },
+                                    trailingIcon = {
+                                        IconButton(onClick = { showDatePicker { date -> scheduleDate = date } }) {
+                                            Icon(Icons.Default.DateRange, contentDescription = "Pick date")
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    readOnly = true
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = scheduleNotes,
+                                    onValueChange = { scheduleNotes = it },
+                                    label = { Text("Notes") },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Button(
+                                    onClick = {
+                                        if (scheduleDate.isBlank()) {
+                                            Toast.makeText(context, "Please select a date and time", Toast.LENGTH_SHORT).show()
+                                            return@Button
+                                        }
+
+                                        scope.launch {
+                                            try {
+                                                val apiDate = convertToApiDate(scheduleDate)
+                                                val response = apiClient.apiService.scheduleFollowUp(
+                                                    leadId,
+                                                    com.plywoodpocket.crm.models.FollowUpRequest(
+                                                        next_follow_up = apiDate,
+                                                        notes = scheduleNotes
+                                                    )
+                                                )
+
+                                                if (response.isSuccessful) {
+                                                    Toast.makeText(context, "Follow-up scheduled successfully", Toast.LENGTH_SHORT).show()
+                                                    // Navigate back to dashboard after a short delay
+                                                    scope.launch {
+                                                        kotlinx.coroutines.delay(1000) // Wait for 1 second to show the toast
+                                                        navController.navigate("dashboard") {
+                                                            popUpTo("dashboard") { inclusive = true }
+                                                        }
+                                                    }
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Failed to schedule follow-up: ${response.message()}",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            } catch (e: Exception) {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Error: ${e.message}",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Schedule Follow-up")
                                 }
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF90A4FF))
-                    ) {
-                        Text("Schedule Follow Up")
+                        }
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-fun DetailRow(label: String, value: String?) {
-    Row(Modifier.padding(vertical = 2.dp)) {
-        Text("$label: ", fontWeight = FontWeight.Bold, color = Color.Black)
-        Text(value ?: "-", color = Color.DarkGray)
-    }
-}
-
-fun convertToApiDate(dateStr: String): String {
-    // Convert dd-MM-yyyy HH:mm to yyyy-MM-dd'T'HH:mm
-    return try {
-        val input = SimpleDateFormat("dd-MM-yyyy HH:mm", Locale.getDefault())
-        val output = SimpleDateFormat("yyyy-MM-dd'T'HH:mm", Locale.getDefault())
-        output.format(input.parse(dateStr) ?: return dateStr)
-    } catch (e: Exception) {
-        dateStr
     }
 }

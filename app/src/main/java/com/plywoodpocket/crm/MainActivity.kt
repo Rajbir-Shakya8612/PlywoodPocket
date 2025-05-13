@@ -47,6 +47,7 @@ import com.plywoodpocket.crm.utils.WorkManagerScheduler
 import com.plywoodpocket.crm.screens.AppNavHost
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,7 +56,19 @@ class MainActivity : ComponentActivity() {
         // Schedule follow-up reminders
         WorkManagerScheduler.scheduleFollowUpReminders(this)
         setContent {
-            AppNavHost(this)
+            // Handle notification intent
+            val intent = intent
+            val shouldNavigateToFollowUp = intent.getBooleanExtra("navigate_to_followup_detail", false)
+            val leadId = intent.getIntExtra("lead_id", -1)
+            
+            AppNavHost(
+                activity = this,
+                initialLeadId = if (shouldNavigateToFollowUp && leadId != -1) leadId else null
+            )
+            
+            // Clear the intent extras after handling
+            intent.removeExtra("navigate_to_followup_detail")
+            intent.removeExtra("lead_id")
         }
     }
 }
@@ -556,4 +569,30 @@ fun BottomNavItem(
 fun getCurrentDate(): String {
     val sdf = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
     return sdf.format(Date())
+}
+
+@Composable
+fun AppNavHost(
+    activity: MainActivity,
+    initialLeadId: Int? = null
+) {
+    val navController = rememberNavController()
+    var showLogin by remember { mutableStateOf(false) }
+    val authViewModel: AuthViewModel = remember { AuthViewModel(activity) }
+    val context = activity.applicationContext
+
+    LaunchedEffect(Unit) {
+        showLogin = !authViewModel.isLoggedIn()
+    }
+
+    // Handle initial navigation to follow-up detail if needed
+    LaunchedEffect(initialLeadId) {
+        if (initialLeadId != null && !showLogin) {
+            navController.navigate("followup_detail/$initialLeadId")
+        }
+    }
+
+    NavHost(navController, startDestination = if (showLogin) "login" else "dashboard") {
+        // ... existing code ...
+    }
 }

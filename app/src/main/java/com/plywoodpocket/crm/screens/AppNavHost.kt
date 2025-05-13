@@ -19,7 +19,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.plywoodpocket.crm.DashboardScreen
 
 @Composable
-fun AppNavHost(activity: MainActivity) {
+fun AppNavHost(
+    activity: MainActivity,
+    initialLeadId: Int? = null
+) {
     val navController = rememberNavController()
     var showLogin by remember { mutableStateOf(false) }
     val authViewModel: AuthViewModel = remember { AuthViewModel(activity) }
@@ -27,6 +30,13 @@ fun AppNavHost(activity: MainActivity) {
 
     LaunchedEffect(Unit) {
         showLogin = !authViewModel.isLoggedIn()
+    }
+
+    // Handle initial navigation to follow-up detail if needed
+    LaunchedEffect(initialLeadId) {
+        if (initialLeadId != null && !showLogin) {
+            navController.navigate("followup_detail/$initialLeadId")
+        }
     }
 
     NavHost(navController, startDestination = if (showLogin) "login" else "dashboard") {

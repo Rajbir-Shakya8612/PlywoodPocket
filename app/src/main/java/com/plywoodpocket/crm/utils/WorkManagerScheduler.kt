@@ -15,7 +15,7 @@ object WorkManagerScheduler {
             .setRequiresBatteryNotLow(true)
             .build()
 
-        val workRequest = PeriodicWorkRequestBuilder<LocationTrackingWorker>(5, TimeUnit.MINUTES).build()
+        val workRequest = PeriodicWorkRequestBuilder<LocationTrackingWorker>(15, TimeUnit.MINUTES).build()
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             "LocationTracking",
             ExistingPeriodicWorkPolicy.REPLACE,
