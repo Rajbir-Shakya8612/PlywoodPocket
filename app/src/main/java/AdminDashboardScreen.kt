@@ -106,7 +106,10 @@ fun AdminGridMenu(searchQuery: String) {
         Triple("Settings", android.R.drawable.ic_menu_preferences, Color(0xFF1976D2)),
         Triple("Approvals", android.R.drawable.ic_menu_send, Color(0xFF1976D2)),
         Triple("Notifications", android.R.drawable.ic_menu_info_details, Color(0xFF1976D2)),
-        Triple("Audit Log", android.R.drawable.ic_menu_recent_history, Color(0xFF1976D2))
+        Triple("Audit Log", android.R.drawable.ic_menu_recent_history, Color(0xFF1976D2)),
+        Triple("Analytics", android.R.drawable.ic_menu_sort_by_size, Color(0xFF1976D2)),
+        Triple("Backup", android.R.drawable.ic_menu_save, Color(0xFF1976D2)),
+        Triple("Security", android.R.drawable.ic_menu_camera, Color(0xFF1976D2))
     )
     val filteredItems = if (searchQuery.isBlank()) null else adminItems.filter { it.first.contains(searchQuery, ignoreCase = true) }
 
@@ -115,7 +118,7 @@ fun AdminGridMenu(searchQuery: String) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             Column(
                 modifier = Modifier.width(100.dp),
@@ -123,12 +126,17 @@ fun AdminGridMenu(searchQuery: String) {
             ) {
                 adminItems.take(3).forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
             }
-            Spacer(modifier = Modifier.width(24.dp))
             Column(
                 modifier = Modifier.width(100.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                adminItems.drop(3).forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
+                adminItems.drop(3).take(3).forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
+            }
+            Column(
+                modifier = Modifier.width(100.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                adminItems.drop(6).forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
             }
         }
     } else {
