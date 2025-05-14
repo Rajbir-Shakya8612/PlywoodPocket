@@ -23,14 +23,17 @@ import com.plywoodpocket.crm.models.Role
 import com.plywoodpocket.crm.viewmodel.AuthState
 import com.plywoodpocket.crm.viewmodel.AuthViewModel
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import com.plywoodpocket.crm.viewmodel.AuthViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     onNavigateToLogin: () -> Unit,
     onRegisterSuccess: () -> Unit,
-    viewModel: AuthViewModel = viewModel()
 ) {
+    val context = LocalContext.current
+    val viewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(context.applicationContext))
     val roles by viewModel.roles.collectAsState()
     val selectedRole by viewModel.selectedRole.collectAsState()
     val isLoadingRoles by viewModel.isLoadingRoles.collectAsState()

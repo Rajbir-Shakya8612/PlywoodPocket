@@ -2,6 +2,7 @@ package com.plywoodpocket.crm.viewmodel
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.plywoodpocket.crm.api.ApiClient
 import com.plywoodpocket.crm.models.LoginRequest
@@ -53,8 +54,8 @@ class AuthViewModel(context: Context) : ViewModel() {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                val response = apiService.login(LoginRequest(email, password))
-                if (response.isSuccessful) {
+                val response = apiService?.login(LoginRequest(email, password))
+                if (response?.isSuccessful == true) {
                     val loginResponse = response.body()
                     if (loginResponse != null) {
                         val expiration = System.currentTimeMillis() + 24 * 60 * 60 * 1000 // 24 hrs
@@ -72,7 +73,7 @@ class AuthViewModel(context: Context) : ViewModel() {
                         _authState.value = AuthState.Error("Login failed: Empty response")
                     }
                 } else {
-                    _authState.value = AuthState.Error("Login failed: ${response.message()}")
+                    _authState.value = AuthState.Error("Login failed: ${response?.message() ?: "Unknown error"}")
                 }
             } catch (e: Exception) {
                 _authState.value = AuthState.Error("Login failed: ${e.localizedMessage ?: "Unknown error"}")
@@ -100,8 +101,8 @@ class AuthViewModel(context: Context) : ViewModel() {
                     passkey = brandPasskey
                 )
 
-                val response = apiService.register(request)
-                if (response.isSuccessful) {
+                val response = apiService?.register(request)
+                if (response?.isSuccessful == true) {
                     val registerResponse = response.body()
                     if (registerResponse != null) {
                         val expiration = System.currentTimeMillis() + 24 * 60 * 60 * 1000
@@ -118,7 +119,7 @@ class AuthViewModel(context: Context) : ViewModel() {
                         _authState.value = AuthState.Error("Registration failed: Empty response")
                     }
                 } else {
-                    _authState.value = AuthState.Error("Registration failed: ${response.message()}")
+                    _authState.value = AuthState.Error("Registration failed: ${response?.message() ?: "Unknown error"}")
                 }
             } catch (e: Exception) {
                 _authState.value = AuthState.Error("Registration failed: ${e.localizedMessage ?: "Unknown error"}")
@@ -130,7 +131,7 @@ class AuthViewModel(context: Context) : ViewModel() {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
-                val response = apiService.logout()
+                val response = apiService?.logout()
                 tokenManager.clearAuthData()
                 _isLoggedIn.value = false
                 _authState.value = AuthState.Success("Logout successful")
@@ -148,15 +149,15 @@ class AuthViewModel(context: Context) : ViewModel() {
             _isLoadingRoles.value = true
             _rolesError.value = null
             try {
-                val response = apiService.getRoles()
-                if (response.isSuccessful) {
+                val response = apiService?.getRoles()
+                if (response?.isSuccessful == true) {
                     response.body()?.let {
                         _roles.value = it
                     } ?: run {
                         _rolesError.value = "Roles list is empty"
                     }
                 } else {
-                    _rolesError.value = "Failed to fetch roles: ${response.message()}"
+                    _rolesError.value = "Failed to fetch roles: ${response?.message() ?: "Unknown error"}"
                 }
             } catch (e: Exception) {
                 _rolesError.value = "Failed to fetch roles: ${e.localizedMessage ?: "Unknown error"}"
