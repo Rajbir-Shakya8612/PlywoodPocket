@@ -99,6 +99,18 @@ class TokenManager(context: Context) {
         }
         return if (userId != -1) userId else null
     }
+
+    fun getUserName(): String? {
+        return sharedPreferences.getString(KEY_USER_NAME, null)
+    }
+
+    fun getUserEmail(): String? {
+        return sharedPreferences.getString(KEY_USER_EMAIL, null)
+    }
+
+    fun getUserRole(): String? {
+        return sharedPreferences.getString(KEY_USER_ROLE, null)
+    }
 }
 
 data class UserData(

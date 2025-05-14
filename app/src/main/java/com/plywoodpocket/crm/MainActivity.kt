@@ -99,6 +99,9 @@ fun MainScreen(activity: MainActivity) {
                     msg.contains("Registration successful", ignoreCase = true) -> {
                         showRegister = false
                     }
+                    msg.contains("Login successful", ignoreCase = true) -> {
+                        // Navigation will be handled in AppNavHost based on role
+                    }
                 }
             }
             is AuthState.Error -> {
@@ -592,7 +595,5 @@ fun AppNavHost(
         }
     }
 
-    NavHost(navController, startDestination = if (showLogin) "login" else "dashboard") {
-        // ... existing code ...
-    }
+
 }

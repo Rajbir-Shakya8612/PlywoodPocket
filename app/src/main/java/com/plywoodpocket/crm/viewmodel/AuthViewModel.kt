@@ -31,6 +31,9 @@ class AuthViewModel(context: Context) : ViewModel() {
     private val _isLoggedIn = MutableStateFlow(tokenManager.isLoggedIn())
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
 
+    private val _userRole = MutableStateFlow<String?>(null)
+    val userRole: StateFlow<String?> = _userRole
+
     private val _roles = MutableStateFlow<List<Role>>(emptyList())
     val roles: StateFlow<List<Role>> = _roles
 
@@ -44,6 +47,7 @@ class AuthViewModel(context: Context) : ViewModel() {
     val rolesError: StateFlow<String?> = _rolesError
 
     init {
+        _userRole.value = tokenManager.getUserRole()
         // Only set error state if not logged in
         if (!tokenManager.isLoggedIn()) {
             _authState.value = AuthState.Error("Please login to continue")
@@ -64,10 +68,11 @@ class AuthViewModel(context: Context) : ViewModel() {
                             loginResponse.user.id,
                             loginResponse.user.name,
                             loginResponse.user.email,
-                            loginResponse.user.role.name,
+                            loginResponse.user.role.slug, // Save role slug instead of name
                             expiration
                         )
                         _isLoggedIn.value = true
+                        _userRole.value = loginResponse.user.role.slug
                         _authState.value = AuthState.Success("Login successful")
                     } else {
                         _authState.value = AuthState.Error("Login failed: Empty response")
@@ -106,14 +111,18 @@ class AuthViewModel(context: Context) : ViewModel() {
                     val registerResponse = response.body()
                     if (registerResponse != null) {
                         val expiration = System.currentTimeMillis() + 24 * 60 * 60 * 1000
+                        // Set role based on role_id (1 = admin)
+                        val roleSlug = if (registerResponse.user.role_id == 1) "admin" else "employee"
                         tokenManager.saveAuthData(
                             registerResponse.token,
                             registerResponse.user.id,
                             registerResponse.user.name,
                             registerResponse.user.email,
-                            registerResponse.user.role_id.toString(),
+                            roleSlug,
                             expiration
                         )
+                        _isLoggedIn.value = true
+                        _userRole.value = roleSlug
                         _authState.value = AuthState.Success("Registration successful")
                     } else {
                         _authState.value = AuthState.Error("Registration failed: Empty response")
@@ -134,11 +143,13 @@ class AuthViewModel(context: Context) : ViewModel() {
                 val response = apiService?.logout()
                 tokenManager.clearAuthData()
                 _isLoggedIn.value = false
+                _userRole.value = null
                 _authState.value = AuthState.Success("Logout successful")
             } catch (e: Exception) {
                 // Even if there's an exception, clear local auth data
                 tokenManager.clearAuthData()
                 _isLoggedIn.value = false
+                _userRole.value = null
                 _authState.value = AuthState.Success("Logout successful")
             }
         }
@@ -173,5 +184,9 @@ class AuthViewModel(context: Context) : ViewModel() {
 
     fun isLoggedIn(): Boolean {
         return _isLoggedIn.value
+    }
+
+    fun isAdmin(): Boolean {
+        return _userRole.value?.equals("admin", ignoreCase = true) == true
     }
 }
