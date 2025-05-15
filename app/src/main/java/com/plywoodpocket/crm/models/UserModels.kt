@@ -14,11 +14,18 @@ data class UserProfile(
     val target_amount: Double?,
     val target_leads: Int?,
     val role: Role,
-    val is_active: Boolean,
-    val photo: String? = null,
+    val is_active: Boolean? = null,
     val status: String? = null,
+    val photo: String? = null,
     val brand_id: Int? = null
-)
+) {
+    val isActiveDisplay: Boolean
+        get() = when {
+            is_active != null -> is_active
+            status != null -> status.equals("active", ignoreCase = true) || status == "1" || status == "true"
+            else -> false
+        }
+}
 
 data class UserProfileResponse(
     val success: Boolean,
@@ -59,4 +66,58 @@ data class UpdateUserRequest(
             )
         }
     }
-} 
+}
+
+data class UsersListResponse(
+    val success: Boolean = true,
+    val data: List<UserProfile>
+)
+
+data class CreateUserRequest(
+    val name: String,
+    val email: String,
+    val password: String,
+    val role_id: Int,
+    val is_active: Boolean = true,
+    val phone: String? = null,
+    val whatsapp_number: String? = null,
+    val pincode: String? = null,
+    val address: String? = null,
+    val location: String? = null,
+    val designation: String? = null,
+    val date_of_joining: String? = null,
+    val target_amount: Double? = null,
+    val target_leads: Int? = null
+)
+
+data class UpdateUserPasswordRequest(
+    val name: String,
+    val email: String,
+    val password: String? = null,
+    val role_id: Int,
+    val is_active: Boolean = true,
+    val phone: String? = null,
+    val whatsapp_number: String? = null,
+    val pincode: String? = null,
+    val address: String? = null,
+    val location: String? = null,
+    val designation: String? = null,
+    val date_of_joining: String? = null,
+    val target_amount: Double? = null,
+    val target_leads: Int? = null
+)
+
+data class ToggleStatusRequest(
+    val is_active: Boolean
+)
+
+data class StandardResponse(
+    val success: Boolean,
+    val message: String,
+    val user: UserProfile? = null
+)
+
+data class RolesResponse(
+    val success: Boolean = true,
+    val data: List<Role>
+) 

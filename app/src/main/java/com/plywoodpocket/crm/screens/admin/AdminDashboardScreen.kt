@@ -1,4 +1,4 @@
-package com.plywoodpocket.crm.screens
+package com.plywoodpocket.crm.screens.admin
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -42,7 +42,18 @@ fun AdminDashboardScreen(
         Spacer(modifier = Modifier.height(24.dp))
         TabRowSection(selectedTab) { selectedTab = it }
         Spacer(modifier = Modifier.height(16.dp))
-        AdminGridMenu(searchQuery)
+        AdminGridMenu(
+            searchQuery = searchQuery,
+            onUsersClick = { navController.navigate("users_screen") },
+            onReportsClick = { navController.navigate("reports_screen") },
+            onSettingsClick = { navController.navigate("settings_screen") },
+            onApprovalsClick = { navController.navigate("approvals_screen") },
+            onNotificationsClick = { navController.navigate("notifications_screen") },
+            onAuditLogClick = { navController.navigate("audit_log_screen") },
+            onAnalyticsClick = { navController.navigate("analytics_screen") },
+            onBackupClick = { navController.navigate("backup_screen") },
+            onSecurityClick = { navController.navigate("security_screen") }
+        )
         Spacer(modifier = Modifier.weight(1f))
         BottomNavBar(
             selectedIndex = selectedIndex,
@@ -99,19 +110,30 @@ fun SearchBar(
 }
 
 @Composable
-fun AdminGridMenu(searchQuery: String) {
+fun AdminGridMenu(
+    searchQuery: String,
+    onUsersClick: () -> Unit,
+    onReportsClick: () -> Unit,
+    onSettingsClick: () -> Unit,
+    onApprovalsClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
+    onAuditLogClick: () -> Unit,
+    onAnalyticsClick: () -> Unit,
+    onBackupClick: () -> Unit,
+    onSecurityClick: () -> Unit
+) {
     val adminItems = listOf(
-        Triple("Users", android.R.drawable.ic_menu_manage, Color(0xFF1976D2)),
-        Triple("Reports", android.R.drawable.ic_menu_agenda, Color(0xFF1976D2)),
-        Triple("Settings", android.R.drawable.ic_menu_preferences, Color(0xFF1976D2)),
-        Triple("Approvals", android.R.drawable.ic_menu_send, Color(0xFF1976D2)),
-        Triple("Notifications", android.R.drawable.ic_menu_info_details, Color(0xFF1976D2)),
-        Triple("Audit Log", android.R.drawable.ic_menu_recent_history, Color(0xFF1976D2)),
-        Triple("Analytics", android.R.drawable.ic_menu_sort_by_size, Color(0xFF1976D2)),
-        Triple("Backup", android.R.drawable.ic_menu_save, Color(0xFF1976D2)),
-        Triple("Security", android.R.drawable.ic_menu_camera, Color(0xFF1976D2))
+        Triple("Users", android.R.drawable.ic_menu_manage, Color(0xFF1976D2)) to onUsersClick,
+        Triple("Reports", android.R.drawable.ic_menu_agenda, Color(0xFF1976D2)) to onReportsClick,
+        Triple("Settings", android.R.drawable.ic_menu_preferences, Color(0xFF1976D2)) to onSettingsClick,
+        Triple("Approvals", android.R.drawable.ic_menu_send, Color(0xFF1976D2)) to onApprovalsClick,
+        Triple("Notifications", android.R.drawable.ic_menu_info_details, Color(0xFF1976D2)) to onNotificationsClick,
+        Triple("Audit Log", android.R.drawable.ic_menu_recent_history, Color(0xFF1976D2)) to onAuditLogClick,
+        Triple("Analytics", android.R.drawable.ic_menu_sort_by_size, Color(0xFF1976D2)) to onAnalyticsClick,
+        Triple("Backup", android.R.drawable.ic_menu_save, Color(0xFF1976D2)) to onBackupClick,
+        Triple("Security", android.R.drawable.ic_menu_camera, Color(0xFF1976D2)) to onSecurityClick,
     )
-    val filteredItems = if (searchQuery.isBlank()) null else adminItems.filter { it.first.contains(searchQuery, ignoreCase = true) }
+    val filteredItems = if (searchQuery.isBlank()) null else adminItems.filter { it.first.first.contains(searchQuery, ignoreCase = true) }
 
     if (filteredItems == null) {
         Row(
@@ -124,19 +146,25 @@ fun AdminGridMenu(searchQuery: String) {
                 modifier = Modifier.width(100.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                adminItems.take(3).forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
+                adminItems.take(3).forEach { (item, onClick) ->
+                    MenuItem(item.first, item.second, item.third, onClick = onClick)
+                }
             }
             Column(
                 modifier = Modifier.width(100.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                adminItems.drop(3).take(3).forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
+                adminItems.drop(3).take(3).forEach { (item, onClick) ->
+                    MenuItem(item.first, item.second, item.third, onClick = onClick)
+                }
             }
             Column(
                 modifier = Modifier.width(100.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                adminItems.drop(6).forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
+                adminItems.drop(6).forEach { (item, onClick) ->
+                    MenuItem(item.first, item.second, item.third, onClick = onClick)
+                }
             }
         }
     } else {
@@ -156,7 +184,9 @@ fun AdminGridMenu(searchQuery: String) {
                     .padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.Center
             ) {
-                filteredItems.forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
+                filteredItems.forEach { (item, onClick) ->
+                    MenuItem(item.first, item.second, item.third, onClick = onClick)
+                }
             }
         }
     }

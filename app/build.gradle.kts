@@ -105,4 +105,8 @@ dependencies {
     // Calendar Compose Library
     implementation("com.kizitonwose.calendar:compose:2.4.0")
 
+    // Coroutines (MISSING EARLIER)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
 }

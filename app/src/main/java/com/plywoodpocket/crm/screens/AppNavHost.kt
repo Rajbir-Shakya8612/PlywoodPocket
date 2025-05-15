@@ -20,6 +20,8 @@ import com.plywoodpocket.crm.api.ApiClient
 import com.plywoodpocket.crm.utils.TokenManager
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.plywoodpocket.crm.DashboardScreen
+import com.plywoodpocket.crm.screens.admin.UserManagementScreen
+import com.plywoodpocket.crm.screens.admin.AdminDashboardScreen
 
 @Composable
 fun AppNavHost(
@@ -142,6 +144,9 @@ fun AppNavHost(
                     navController.navigate("profile")
                 }
             )
+        }
+        composable("users_screen") {
+            UserManagementScreen(onBack = { navController.popBackStack() })
         }
 
         composable("profile") {

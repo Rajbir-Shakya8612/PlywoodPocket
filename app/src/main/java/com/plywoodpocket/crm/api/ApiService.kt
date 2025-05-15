@@ -104,4 +104,42 @@ interface ApiService {
     suspend fun completeFollowUp(@Path("lead") leadId: Int, @Body request: CompleteFollowUpRequest): Response<Any>
 
 
+
+//    admin api
+
+    // Admin Users API
+    @Headers("Accept: application/json")
+    @GET("api/admin/users")
+    suspend fun getAdminUsers(): Response<List<UserProfile>>
+
+    @Headers("Accept: application/json")
+    @POST("api/admin/users")
+    suspend fun createAdminUser(@Body request: CreateUserRequest): Response<StandardResponse>
+
+    @Headers("Accept: application/json")
+    @GET("api/admin/users/{user}")
+    suspend fun getAdminUser(@Path("user") userId: Int): Response<UserProfileResponse>
+
+    @Headers("Accept: application/json")
+    @PUT("api/admin/users/{user}")
+    suspend fun updateAdminUser(
+        @Path("user") userId: Int,
+        @Body request: UpdateUserPasswordRequest
+    ): Response<StandardResponse>
+
+    @Headers("Accept: application/json")
+    @DELETE("api/admin/users/{user}")
+    suspend fun deleteAdminUser(@Path("user") userId: Int): Response<StandardResponse>
+
+    @Headers("Accept: application/json")
+    @POST("api/admin/users/{user}/toggle-status")
+    suspend fun toggleAdminUserStatus(
+        @Path("user") userId: Int,
+        @Body request: ToggleStatusRequest
+    ): Response<StandardResponse>
+
+    @Headers("Accept: application/json")
+    @GET("api/roles")
+    suspend fun getAdminRoles(): Response<List<Role>>
+
 } 

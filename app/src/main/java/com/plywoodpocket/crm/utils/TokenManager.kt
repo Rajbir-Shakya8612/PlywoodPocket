@@ -2,6 +2,7 @@ package com.plywoodpocket.crm.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import java.util.*
@@ -45,13 +46,22 @@ class TokenManager(context: Context) {
     fun getToken(): String? {
         val token = sharedPreferences.getString(KEY_TOKEN, null)
         val expiration = sharedPreferences.getLong(KEY_TOKEN_EXPIRATION, 0)
-
+        
+        Log.d("TokenManager", "Getting token - exists: ${token != null}")
+        
         // If token is expired, clear it and return null
         if (token != null && System.currentTimeMillis() > expiration) {
+            Log.d("TokenManager", "Token expired, clearing auth data")
             clearAuthData()
             return null
         }
-
+        
+        if (token != null) {
+            Log.d("TokenManager", "Valid token retrieved")
+        } else {
+            Log.d("TokenManager", "No token found")
+        }
+        
         return token
     }
 
