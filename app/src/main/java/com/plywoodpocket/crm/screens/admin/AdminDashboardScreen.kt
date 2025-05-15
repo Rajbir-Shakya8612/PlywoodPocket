@@ -51,7 +51,7 @@ fun AdminDashboardScreen(
             onNotificationsClick = { navController.navigate("notifications_screen") },
             onAuditLogClick = { navController.navigate("audit_log_screen") },
             onAnalyticsClick = { navController.navigate("analytics_screen") },
-            onBackupClick = { navController.navigate("backup_screen") },
+            onLocationClick = { navController.navigate("location_screen") },
             onSecurityClick = { navController.navigate("security_screen") }
         )
         Spacer(modifier = Modifier.weight(1f))
@@ -119,7 +119,7 @@ fun AdminGridMenu(
     onNotificationsClick: () -> Unit,
     onAuditLogClick: () -> Unit,
     onAnalyticsClick: () -> Unit,
-    onBackupClick: () -> Unit,
+    onLocationClick: () -> Unit,
     onSecurityClick: () -> Unit
 ) {
     val adminItems = listOf(
@@ -130,7 +130,7 @@ fun AdminGridMenu(
         Triple("Notifications", android.R.drawable.ic_menu_info_details, Color(0xFF1976D2)) to onNotificationsClick,
         Triple("Audit Log", android.R.drawable.ic_menu_recent_history, Color(0xFF1976D2)) to onAuditLogClick,
         Triple("Analytics", android.R.drawable.ic_menu_sort_by_size, Color(0xFF1976D2)) to onAnalyticsClick,
-        Triple("Backup", android.R.drawable.ic_menu_save, Color(0xFF1976D2)) to onBackupClick,
+        Triple("Location", android.R.drawable.ic_menu_save, Color(0xFF1976D2)) to onLocationClick,
         Triple("Security", android.R.drawable.ic_menu_camera, Color(0xFF1976D2)) to onSecurityClick,
     )
     val filteredItems = if (searchQuery.isBlank()) null else adminItems.filter { it.first.first.contains(searchQuery, ignoreCase = true) }
