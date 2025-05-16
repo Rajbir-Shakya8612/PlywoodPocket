@@ -112,16 +112,16 @@ fun AdminLocationScreen(
                             }
                             Spacer(Modifier.width(8.dp))
                             Button(onClick = {
-                                // Open full track in Google Maps
-                                val points = timeline.tracks.map { it.latitude to it.longitude }
-                                if (points.isNotEmpty()) {
+                                // Open last 10 points in Google Maps
+                                val points = timeline.tracks.takeLast(10).map { it.latitude to it.longitude }
+                                if (points.size >= 2) {
                                     val uri = "http://maps.google.com/maps?saddr=${points.first().first},${points.first().second}&daddr=" +
-                                        points.joinToString("+to:") { "${it.first},${it.second}" }
+                                        points.drop(1).joinToString("+to:") { "${it.first},${it.second}" }
                                     val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uri))
                                     context.startActivity(intent)
                                 }
                             }) {
-                                Text("Open Full Track in Google Maps")
+                                Text("Open Last 10 in Google Maps")
                             }
                         }
                         Spacer(Modifier.height(8.dp))
