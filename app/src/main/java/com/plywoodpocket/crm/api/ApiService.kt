@@ -142,4 +142,36 @@ interface ApiService {
     @GET("api/roles")
     suspend fun getAdminRoles(): Response<List<Role>>
 
+    // Admin Location APIs
+    @Headers("Accept: application/json")
+    @GET("api/admin/locations/timeline-data")
+    suspend fun getAdminLocationTimeline(
+        @Query("user_id") userId: Int? = null,
+        @Query("month") month: String? = null
+    ): Response<AdminLocationTimelineResponse>
+
+    @Headers("Accept: application/json")
+    @GET("api/admin/locations/tracks")
+    suspend fun getAdminLocationTracks(
+        @Query("user_id") userId: Int? = null,
+        @Query("start_date") startDate: String? = null,
+        @Query("end_date") endDate: String? = null
+    ): Response<AdminLocationTracksResponse>
+
+    @Headers("Accept: application/json")
+    @GET("api/admin/locations/stats")
+    suspend fun getAdminLocationStats(
+        @Query("user_id") userId: Int? = null,
+        @Query("start_date") startDate: String? = null,
+        @Query("end_date") endDate: String? = null
+    ): Response<AdminLocationStatsResponse>
+
+    @Headers("Accept: application/json")
+    @GET("api/admin/locations/detailed-tracks")
+    suspend fun getAdminDetailedTracks(
+        @Query("user_id") userId: Int? = null,
+        @Query("start_date") startDate: String? = null,
+        @Query("end_date") endDate: String? = null
+    ): Response<AdminLocationDetailedTracksResponse>
+
 } 

@@ -61,6 +61,10 @@
             android:foregroundServiceType="location"
             android:exported="false" />
 
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyBl5N0v6zO372f3-RU-mSKNAMyN1Cu0Rzk"/>
+
     </application>
 
 </manifest>

@@ -51,7 +51,7 @@ fun AdminDashboardScreen(
             onNotificationsClick = { navController.navigate("notifications_screen") },
             onAuditLogClick = { navController.navigate("audit_log_screen") },
             onAnalyticsClick = { navController.navigate("analytics_screen") },
-            onLocationClick = { navController.navigate("location_screen") },
+            onLocationClick = { navController.navigate("admin_location_screen") },
             onSecurityClick = { navController.navigate("security_screen") }
         )
         Spacer(modifier = Modifier.weight(1f))
