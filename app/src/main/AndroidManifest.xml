@@ -25,10 +25,9 @@
         android:theme="@style/Theme.PlywoodPocket"
         tools:targetApi="31">
 
-        <!-- Add Google Maps API Key -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="${MAPS_API_KEY}" />
+            android:value="@string/google_maps_key" />
 
         <activity
             android:name=".MainActivity"

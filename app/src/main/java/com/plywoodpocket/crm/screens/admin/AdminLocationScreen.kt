@@ -147,44 +147,12 @@ fun AdminLocationScreen(
                                     Text("No location data available for this range.")
                                 }
                             } else {
-                                val firstLatLng = tracks.firstOrNull { it.latLng() != null }?.latLng()
-                                val cameraPositionState = rememberCameraPositionState {
-                                    position = if (firstLatLng != null) {
-                                        CameraPosition.fromLatLngZoom(firstLatLng, 15f)
-                                    } else {
-                                        CameraPosition.fromLatLngZoom(LatLng(28.6139, 77.2090), 12f)
-                                    }
-                                }
-
-                                GoogleMap(
-                                    modifier = Modifier.fillMaxSize(),
-                                    cameraPositionState = cameraPositionState,
-                                    uiSettings = MapUiSettings(zoomControlsEnabled = true),
-                                    properties = MapProperties(isMyLocationEnabled = true)
-                                ) {
-                                    val polylinePoints = tracks.mapNotNull { it.latLng() }
-                                    Polyline(
-                                        points = polylinePoints,
-                                        color = Color.Blue,
-                                        width = 8f
-                                    )
-                                    tracks.forEachIndexed { index, track ->
-                                        track.latLng()?.let { latLng ->
-                                            Marker(
-                                                state = MarkerState(position = latLng),
-                                                title = "Time: ${track.time}",
-                                                snippet = "Accuracy: ${track.accuracy}m\nStay: ${track.stay_duration ?: "N/A"}",
-                                                icon = BitmapDescriptorFactory.defaultMarker(
-                                                    when (index) {
-                                                        0 -> BitmapDescriptorFactory.HUE_GREEN
-                                                        tracks.lastIndex -> BitmapDescriptorFactory.HUE_RED
-                                                        else -> BitmapDescriptorFactory.HUE_AZURE
-                                                    }
-                                                )
-                                            )
-                                        }
-                                    }
-                                }
+                                // Use the reusable map section
+                                LocationMapSection(
+                                    tracks = tracks,
+                                    focusedTrack = null,
+                                    showFullTrack = true
+                                )
                             }
                         }
                     }
@@ -260,7 +228,7 @@ fun LocationMapSection(
     GoogleMap(
         modifier = Modifier
             .fillMaxWidth()
-            .height(300.dp),
+            .height(400.dp),
         cameraPositionState = cameraPositionState
     ) {
         if (showFullTrack) {
