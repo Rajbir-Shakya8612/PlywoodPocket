@@ -1,6 +1,8 @@
 package com.plywoodpocket.crm.screens.admin
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,6 +18,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.*
 import com.google.maps.android.compose.*
 import com.plywoodpocket.crm.api.ApiClient
 import com.plywoodpocket.crm.api.ApiService
@@ -37,10 +43,14 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.CameraPosition
 import androidx.compose.material3.CenterAlignedTopAppBar
+import com.google.accompanist.permissions.PermissionStatus
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
-//import com.google.maps.android.graphics.BitmapDescriptorFactory
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Arrangement
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class,
+    ExperimentalLayoutApi::class
+)
 @Composable
 fun AdminLocationScreen(
     onBack: () -> Unit
@@ -52,10 +62,14 @@ fun AdminLocationScreen(
     val state = viewModel.state.value
     val salespersons by viewModel.salespersons
     val selectedSalesperson by viewModel.selectedSalesperson
-    val months = remember { getLast12Months() }
-    var selectedMonth by remember { mutableStateOf(months.first()) }
-    val focusedTrack by viewModel.focusedTrack
-    val showFullTrack by viewModel.showFullTrack
+    val permissionState = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
+    val sdf = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
+    var startDate by remember { mutableStateOf(sdf.format(Date())) }
+    var endDate by remember { mutableStateOf(sdf.format(Date())) }
+
+    LaunchedEffect(Unit) {
+        permissionState.launchPermissionRequest()
+    }
 
     Scaffold(
         topBar = {
@@ -70,84 +84,141 @@ fun AdminLocationScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
-            // Salesperson Dropdown
-            SalespersonDropdown(
-                salespersons = salespersons,
-                selected = selectedSalesperson,
-                onSelect = { viewModel.selectSalesperson(it) }
-            )
-            Spacer(Modifier.height(8.dp))
-            // Month Picker
-            MonthDropdown(
-                months = months,
-                selected = selectedMonth,
-                onSelect = {
-                    selectedMonth = it
-                    viewModel.fetchTimeline(selectedSalesperson?.id, it)
-                }
-            )
-            Spacer(Modifier.height(8.dp))
-            Box(modifier = Modifier.weight(1f)) {
-                if (state.isLoading) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                } else if (state.error != null) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Error: ${state.error}", color = Color.Red)
-                    }
-                } else if (state.timeline != null) {
-                    val timeline = state.timeline
-                    Column(
+            when (permissionState.status) {
+                is PermissionStatus.Granted -> {
+                    // Salesperson Dropdown
+                    SalespersonDropdown(
+                        salespersons = salespersons,
+                        selected = selectedSalesperson,
+                        onSelect = { viewModel.selectSalesperson(it) }
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    // Responsive Date Pickers and Load Button
+                    FlowRow(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        LocationStatsSection(timeline.stats)
-                        Spacer(Modifier.height(16.dp))
-                        // Buttons for full track and open in Google Maps
-                        Row(Modifier.padding(horizontal = 16.dp)) {
-                            Button(onClick = { viewModel.showFullTrack() }) {
-                                Text("View Full Track")
+                        DatePickerField(
+                            label = "Start Date",
+                            date = startDate,
+                            onDateSelected = { selected -> startDate = selected }
+                        )
+                        DatePickerField(
+                            label = "End Date",
+                            date = endDate,
+                            onDateSelected = { selected -> endDate = selected }
+                        )
+                        Button(
+                            onClick = {
+                                viewModel.fetchDetailedTracks(
+                                    userId = selectedSalesperson?.id,
+                                    startDate = startDate,
+                                    endDate = endDate
+                                )
+                            },
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        ) {
+                            Text("Load")
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                    ) {
+                        if (state.isLoading) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
                             }
-                            Spacer(Modifier.width(8.dp))
-                            Button(onClick = {
-                                // Open last 10 points in Google Maps
-                                val points = timeline.tracks.takeLast(10).map { it.latitude to it.longitude }
-                                if (points.size >= 2) {
-                                    val uri = "http://maps.google.com/maps?saddr=${points.first().first},${points.first().second}&daddr=" +
-                                        points.drop(1).joinToString("+to:") { "${it.first},${it.second}" }
-                                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uri))
-                                    context.startActivity(intent)
+                        } else if (state.error != null) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("Error: ${state.error}", color = Color.Red)
+                            }
+                        } else if (state.detailedTracks != null) {
+                            val tracks = state.detailedTracks
+                            if (tracks.isEmpty()) {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text("No location data available for this range.")
                                 }
-                            }) {
-                                Text("Open Last 10 in Google Maps")
+                            } else {
+                                val firstLatLng = tracks.firstOrNull { it.latLng() != null }?.latLng()
+                                val cameraPositionState = rememberCameraPositionState {
+                                    position = if (firstLatLng != null) {
+                                        CameraPosition.fromLatLngZoom(firstLatLng, 15f)
+                                    } else {
+                                        CameraPosition.fromLatLngZoom(LatLng(28.6139, 77.2090), 12f)
+                                    }
+                                }
+
+                                GoogleMap(
+                                    modifier = Modifier.fillMaxSize(),
+                                    cameraPositionState = cameraPositionState,
+                                    uiSettings = MapUiSettings(zoomControlsEnabled = true),
+                                    properties = MapProperties(isMyLocationEnabled = true)
+                                ) {
+                                    val polylinePoints = tracks.mapNotNull { it.latLng() }
+                                    Polyline(
+                                        points = polylinePoints,
+                                        color = Color.Blue,
+                                        width = 8f
+                                    )
+                                    tracks.forEachIndexed { index, track ->
+                                        track.latLng()?.let { latLng ->
+                                            Marker(
+                                                state = MarkerState(position = latLng),
+                                                title = "Time: ${track.time}",
+                                                snippet = "Accuracy: ${track.accuracy}m\nStay: ${track.stay_duration ?: "N/A"}",
+                                                icon = BitmapDescriptorFactory.defaultMarker(
+                                                    when (index) {
+                                                        0 -> BitmapDescriptorFactory.HUE_GREEN
+                                                        tracks.lastIndex -> BitmapDescriptorFactory.HUE_RED
+                                                        else -> BitmapDescriptorFactory.HUE_AZURE
+                                                    }
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
-                        Spacer(Modifier.height(8.dp))
-                        LocationMapSection(
-                            tracks = timeline.tracks,
-                            focusedTrack = focusedTrack,
-                            showFullTrack = showFullTrack
-                        )
-                        Spacer(Modifier.height(16.dp))
-                        LocationTrackListSection(
-                            tracks = timeline.tracks,
-                            onViewOnMap = { viewModel.focusTrack(it) },
-                            onOpenInGoogleMaps = { track ->
-                                val uri = "geo:${track.latitude},${track.longitude}?q=${track.latitude},${track.longitude}(Location)"
-                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uri))
-                                context.startActivity(intent)
+                    }
+                }
+                is PermissionStatus.Denied -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Location permission is required to display the map.")
+                            Spacer(Modifier.height(8.dp))
+                            Button(onClick = { permissionState.launchPermissionRequest() }) {
+                                Text("Grant Permission")
                             }
-                        )
+                        }
                     }
                 }
             }
         }
     }
-    // Fetch data on first launch
-    LaunchedEffect(Unit) {
-        viewModel.fetchTimeline()
+}
+
+@Composable
+fun DatePickerField(label: String, date: String, onDateSelected: (String) -> Unit) {
+    val context = LocalContext.current
+    val calendar = Calendar.getInstance()
+    val (year, month, day) = date.split("-").map { it.toInt() }
+    calendar.set(year, month - 1, day)
+    val datePickerDialog = remember {
+        DatePickerDialog(context, { _, y, m, d ->
+            val selectedDate = String.format("%04d-%02d-%02d", y, m + 1, d)
+            onDateSelected(selectedDate)
+        }, year, month - 1, day)
+    }
+    OutlinedButton(onClick = { datePickerDialog.show() }) {
+        Text("$label: $date")
     }
 }
 
@@ -178,10 +249,10 @@ fun LocationMapSection(
         }
         return
     }
-    val points = tracks.map { LatLng(it.latitude, it.longitude) }
+    val points = tracks.mapNotNull { it.latLng() }
     val cameraPositionState = rememberCameraPositionState {
         position = when {
-            focusedTrack != null -> CameraPosition.fromLatLngZoom(LatLng(focusedTrack.latitude, focusedTrack.longitude), 16f)
+            focusedTrack?.latLng() != null -> CameraPosition.fromLatLngZoom(focusedTrack.latLng()!!, 16f)
             points.isNotEmpty() -> CameraPosition.fromLatLngZoom(points.first(), 12f)
             else -> CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 1f)
         }
@@ -196,26 +267,28 @@ fun LocationMapSection(
             // All markers and polyline
             tracks.forEachIndexed { idx, track ->
                 val isCurrent = idx == tracks.lastIndex
-                Marker(
-                    state = MarkerState(position = LatLng(track.latitude, track.longitude)),
-                    title = track.user ?: "User",
-                    snippet = buildString {
-                        append("${track.date} ${track.time}")
-                        track.stay_duration?.let { append("\nStay: $it") }
-                        track.exit_timestamp?.let { append("\nExit: $it") }
-                    },
-                    icon = if (isCurrent) BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN) else null
-                )
+                track.latLng()?.let { latLng ->
+                    Marker(
+                        state = MarkerState(position = latLng),
+                        title = track.user ?: "User",
+                        snippet = buildString {
+                            append("${track.date} ${track.time}")
+                            track.stay_duration?.let { append("\nStay: $it") }
+                            track.exit_timestamp?.let { append("\nExit: $it") }
+                        },
+                        icon = if (isCurrent) BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN) else null
+                    )
+                }
             }
             Polyline(
                 points = points,
                 color = Color(0xFF4CAF50), // Green
                 width = 6f
             )
-        } else if (focusedTrack != null) {
+        } else if (focusedTrack?.latLng() != null) {
             // Only focused marker
             Marker(
-                state = MarkerState(position = LatLng(focusedTrack.latitude, focusedTrack.longitude)),
+                state = MarkerState(position = focusedTrack.latLng()!!),
                 title = focusedTrack.user ?: "User",
                 snippet = buildString {
                     append("${focusedTrack.date} ${focusedTrack.time}")
@@ -363,17 +436,16 @@ class AdminLocationViewModel(private val apiService: ApiService) : ViewModel() {
 
     fun selectSalesperson(user: UserProfile?) {
         _selectedSalesperson.value = user
-        fetchTimeline(userId = user?.id)
     }
 
-    fun fetchTimeline(userId: Int? = null, month: String? = null) {
+    fun fetchDetailedTracks(userId: Int? = null, startDate: String? = null, endDate: String? = null) {
         _state.value = _state.value.copy(isLoading = true, error = null)
         viewModelScope.launch {
             try {
-                val response = apiService.getAdminLocationTimeline(userId, month)
+                val response = apiService.getAdminDetailedTracks(userId, startDate, endDate)
                 if (response.isSuccessful) {
                     _state.value = _state.value.copy(
-                        timeline = response.body(),
+                        detailedTracks = response.body()?.data,
                         isLoading = false,
                         error = null
                     )
@@ -400,5 +472,6 @@ class AdminLocationViewModelFactory(private val apiService: ApiService) : ViewMo
 data class AdminLocationState(
     val isLoading: Boolean = false,
     val error: String? = null,
-    val timeline: AdminLocationTimelineResponse? = null
-) 
+    val timeline: AdminLocationTimelineResponse? = null,
+    val detailedTracks: List<AdminLocationTrack>? = null
+)
