@@ -170,8 +170,8 @@ fun AdminLocationScreen(
                                 shape = MaterialTheme.shapes.medium,
                                 color = MaterialTheme.colorScheme.surface,
                                 modifier = Modifier
-                                    .fillMaxWidth(1f)
-                                    .widthIn(max = 420.dp)
+                                    .fillMaxWidth()
+                                    .widthIn(min = 220.dp, max = 500.dp)
                             ) {
                                 Column(
                                     Modifier
@@ -184,15 +184,20 @@ fun AdminLocationScreen(
                                     Text("Timeline", style = MaterialTheme.typography.titleMedium)
                                     Spacer(Modifier.height(8.dp))
                                     sortedTracks.forEach { track ->
-                                        Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                        Card(
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 4.dp)
+                                                .widthIn(min = 180.dp, max = 480.dp)
+                                        ) {
                                             Column(Modifier.padding(8.dp)) {
-                                                Text("User: ${track.user ?: "-"}")
-                                                Text("Date: ${track.date} ${track.time}")
-                                                Text("Type: ${track.type ?: "-"}")
+                                                Text("User: ${track.user ?: "-"}", style = MaterialTheme.typography.bodySmall)
+                                                Text("Date: ${track.date} ${track.time}", style = MaterialTheme.typography.bodySmall)
+                                                Text("Type: ${track.type ?: "-"}", style = MaterialTheme.typography.bodySmall)
                                                 if (!track.stay_duration.isNullOrEmpty() && track.stay_duration != "0") {
-                                                    Text("Stay Duration: ${track.stay_duration} min")
+                                                    Text("Stay Duration: ${track.stay_duration} min", style = MaterialTheme.typography.bodySmall)
                                                 }
-                                                track.exit_timestamp?.let { Text("Exit: $it") }
+                                                track.exit_timestamp?.let { Text("Exit: $it", style = MaterialTheme.typography.bodySmall) }
                                                 Row(
                                                     Modifier
                                                         .padding(top = 4.dp)
@@ -201,17 +206,17 @@ fun AdminLocationScreen(
                                                 ) {
                                                     Button(
                                                         onClick = { /* TODO: View on Map */ },
-                                                        modifier = Modifier.weight(1f),
-                                                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
+                                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                                        contentPadding = PaddingValues(vertical = 4.dp, horizontal = 0.dp)
                                                     ) {
-                                                        Text("View on Map", fontSize = MaterialTheme.typography.bodySmall.fontSize)
+                                                        Text("View on Map", style = MaterialTheme.typography.bodySmall, maxLines = 1)
                                                     }
                                                     Button(
                                                         onClick = { /* TODO: Open in Google Maps */ },
-                                                        modifier = Modifier.weight(1f),
-                                                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
+                                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                                        contentPadding = PaddingValues(vertical = 4.dp, horizontal = 0.dp)
                                                     ) {
-                                                        Text("Open in Google Maps", fontSize = MaterialTheme.typography.bodySmall.fontSize)
+                                                        Text("Open in Google Maps", style = MaterialTheme.typography.bodySmall, maxLines = 1)
                                                     }
                                                 }
                                             }
@@ -567,26 +572,38 @@ fun LocationMapSection(
     }
 
     Column {
-        // Map type toggle and open in Google Maps
+        // Satellite/Normal Map and Open in Google Maps buttons (responsive)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Button(
                 onClick = { isSatelliteMode = !isSatelliteMode },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 40.dp),
+                contentPadding = PaddingValues(vertical = 8.dp, horizontal = 0.dp)
             ) {
-                Text(if (isSatelliteMode) "Normal Map" else "Satellite Map")
+                Text(
+                    if (isSatelliteMode) "Normal Map" else "Satellite Map",
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1
+                )
             }
-            if (points.size >= 2) {
-                Button(
-                    onClick = { openInGoogleMaps(context, points) },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Open in Google Maps")
-                }
+            Button(
+                onClick = { openInGoogleMaps(context, points) },
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 40.dp),
+                contentPadding = PaddingValues(vertical = 8.dp, horizontal = 0.dp)
+            ) {
+                Text(
+                    "Open in Google Maps",
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1
+                )
             }
         }
 
