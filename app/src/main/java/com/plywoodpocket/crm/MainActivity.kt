@@ -58,19 +58,47 @@ class MainActivity : ComponentActivity() {
         // Schedule follow-up reminders
         WorkManagerScheduler.scheduleFollowUpReminders(this)
         setContent {
-            // Handle notification intent
-            val intent = intent
-            val shouldNavigateToFollowUp = intent.getBooleanExtra("navigate_to_followup_detail", false)
-            val leadId = intent.getIntExtra("lead_id", -1)
-            
-            AppNavHost(
-                activity = this,
-                initialLeadId = if (shouldNavigateToFollowUp && leadId != -1) leadId else null
-            )
-            
-            // Clear the intent extras after handling
-            intent.removeExtra("navigate_to_followup_detail")
-            intent.removeExtra("lead_id")
+            val context = this
+            var permissionsGranted by remember { mutableStateOf(false) }
+            val permissionLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestMultiplePermissions()
+            ) { permissions: Map<String, Boolean> ->
+                permissionsGranted = permissions.values.all { it }
+            }
+            // Check permissions on start and after login
+            LaunchedEffect(Unit) {
+                if (!PermissionHandler.hasRequiredPermissions(context)) {
+                    permissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        )
+                    )
+                } else {
+                    permissionsGranted = true
+                }
+            }
+            if (!permissionsGranted) {
+                PermissionHandler.PermissionRequestDialog(
+                    onDismiss = {},
+                    onSettingsClick = {
+                        PermissionHandler.openAppSettings(context)
+                    }
+                )
+            } else {
+                // Handle notification intent
+                val intent = intent
+                val shouldNavigateToFollowUp = intent.getBooleanExtra("navigate_to_followup_detail", false)
+                val leadId = intent.getIntExtra("lead_id", -1)
+                AppNavHost(
+                    activity = this,
+                    initialLeadId = if (shouldNavigateToFollowUp && leadId != -1) leadId else null
+                )
+                // Clear the intent extras after handling
+                intent.removeExtra("navigate_to_followup_detail")
+                intent.removeExtra("lead_id")
+            }
         }
     }
 }
@@ -88,9 +116,15 @@ fun MainScreen(activity: MainActivity) {
     var showLeadsScreen by remember { mutableStateOf(false) }
     val authState by authViewModel.authState.collectAsState()
 
-    // Observe AttendanceViewModel error for session expiration
-    val attendanceViewModel: com.plywoodpocket.crm.viewmodel.AttendanceViewModel = viewModel()
-    val attendanceError = attendanceViewModel.errorMessage
+    // Add AttendanceViewModel for check-in status using factory
+    val attendanceViewModel: com.plywoodpocket.crm.viewmodel.AttendanceViewModel = viewModel(
+        factory = com.plywoodpocket.crm.viewmodel.AttendanceViewModelFactory(
+            context.applicationContext as android.app.Application,
+            com.plywoodpocket.crm.utils.TokenManager(context),
+            com.plywoodpocket.crm.api.ApiClient(com.plywoodpocket.crm.utils.TokenManager(context)).apiService
+        )
+    )
+    val isCheckedIn = attendanceViewModel.attendanceStatus == "checked_in"
 
     // Check authentication state on app start and when auth state changes
     LaunchedEffect(authState) {
@@ -115,8 +149,8 @@ fun MainScreen(activity: MainActivity) {
     }
 
     // Check session expiration from attendance error
-    LaunchedEffect(attendanceError) {
-        if (attendanceError == "Session expired. Please login again.") {
+    LaunchedEffect(attendanceViewModel.errorMessage) {
+        if (attendanceViewModel.errorMessage == "Session expired. Please login again.") {
             authViewModel.logout()
         }
     }
@@ -246,6 +280,17 @@ fun DashboardScreen(
     var selectedIndex by remember { mutableStateOf(2) }
     var searchQuery by remember { mutableStateOf("") }
 
+    // Add AttendanceViewModel for check-in status using factory
+    val context = LocalContext.current
+    val attendanceViewModel: com.plywoodpocket.crm.viewmodel.AttendanceViewModel = viewModel(
+        factory = com.plywoodpocket.crm.viewmodel.AttendanceViewModelFactory(
+            context.applicationContext as android.app.Application,
+            com.plywoodpocket.crm.utils.TokenManager(context),
+            com.plywoodpocket.crm.api.ApiClient(com.plywoodpocket.crm.utils.TokenManager(context)).apiService
+        )
+    )
+    val isCheckedIn = attendanceViewModel.attendanceStatus == "checked_in"
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.fillMaxSize()
@@ -278,7 +323,13 @@ fun DashboardScreen(
             selectedTab = selectedTab,
             setSelectedTab = { selectedTab = it },
             onProfileClick = { navController.navigate("profile") },
-            onLogout = { onLogout() },
+            onLogout = {
+                if (isCheckedIn) {
+                    Toast.makeText(context, "Please check out before logout", Toast.LENGTH_SHORT).show()
+                } else {
+                    onLogout()
+                }
+            },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()

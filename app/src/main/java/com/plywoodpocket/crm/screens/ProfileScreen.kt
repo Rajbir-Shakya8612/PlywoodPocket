@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.plywoodpocket.crm.models.UserProfile
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
+import android.widget.Toast
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,6 +51,17 @@ fun ProfileScreen(
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showEditSheet by remember { mutableStateOf(false) }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val context = LocalContext.current
+    // AttendanceViewModel for check-in status
+    val attendanceViewModel: com.plywoodpocket.crm.viewmodel.AttendanceViewModel = viewModel(
+        factory = com.plywoodpocket.crm.viewmodel.AttendanceViewModelFactory(
+            context.applicationContext as android.app.Application,
+            com.plywoodpocket.crm.utils.TokenManager(context),
+            com.plywoodpocket.crm.api.ApiClient(com.plywoodpocket.crm.utils.TokenManager(context)).apiService
+        )
+    )
+    val isCheckedIn = attendanceViewModel.attendanceStatus == "checked_in"
 
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -107,7 +119,13 @@ fun ProfileScreen(
                         selectedImageUri = selectedImageUri,
                         onImageClick = { launcher.launch("image/*") },
                         onEditClick = { showEditSheet = true },
-                        onLogoutClick = { showLogoutDialog = true }
+                        onLogoutClick = {
+                            if (isCheckedIn) {
+                                Toast.makeText(context, "Please check out before logout", Toast.LENGTH_SHORT).show()
+                            } else {
+                                showLogoutDialog = true
+                            }
+                        }
                     )
                     if (showEditSheet) {
                         EditProfileBottomSheet(

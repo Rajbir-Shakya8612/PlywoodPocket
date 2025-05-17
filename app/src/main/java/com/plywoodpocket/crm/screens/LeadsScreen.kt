@@ -333,7 +333,15 @@ fun LeadsScreen(
                         if (!lead.notes.isNullOrBlank()) Text("Notes: ${lead.notes}")
                         if (!lead.description.isNullOrBlank()) Text("Description: ${lead.description}")
                         if (!lead.company.isNullOrBlank()) Text("Company: ${lead.company}")
-                        if (!lead.additional_info.isNullOrBlank()) Text("Additional Info: ${lead.additional_info}")
+                        if (lead.additional_info != null) {
+                            val info = lead.additional_info
+                            val infoText = when (info) {
+                                is String -> info
+                                is List<*> -> info.joinToString(", ") { it.toString() }
+                                else -> info.toString()
+                            }
+                            if (infoText.isNotBlank() && infoText != "null") Text("Additional Info: $infoText")
+                        }
                         if (!lead.source.isNullOrBlank()) Text("Source: ${lead.source}")
                     }
                 },
@@ -638,10 +646,15 @@ fun FollowUpDetailScreen(leadId: Int, navController: NavController) {
                                     value = l.description
                                 )
                                 if (!l.company.isNullOrBlank()) DetailRow(label = "Company", value = l.company)
-                                if (!l.additional_info.isNullOrBlank()) DetailRow(
-                                    label = "Additional Info",
-                                    value = l.additional_info
-                                )
+                                if (l.additional_info != null) {
+                                    val info = l.additional_info
+                                    val infoText = when (info) {
+                                        is String -> info
+                                        is List<*> -> info.joinToString(", ") { it.toString() }
+                                        else -> info.toString()
+                                    }
+                                    if (infoText.isNotBlank() && infoText != "null") DetailRow(label = "Additional Info", value = infoText)
+                                }
                                 if (!l.source.isNullOrBlank()) DetailRow(label = "Source", value = l.source)
                             }
                         }
