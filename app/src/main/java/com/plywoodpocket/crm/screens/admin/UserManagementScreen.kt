@@ -48,6 +48,19 @@ fun UserManagementScreen(
     var showEditDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var userToDelete by remember { mutableStateOf<UserProfile?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredUsers = remember(users, searchQuery) {
+        if (searchQuery.isEmpty()) {
+            users
+        } else {
+            users.filter { user ->
+                user.name.contains(searchQuery, ignoreCase = true) ||
+                user.email.contains(searchQuery, ignoreCase = true) ||
+                user.role.name.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.loadUsers()
@@ -94,6 +107,32 @@ fun UserManagementScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
+            // Search Bar
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                placeholder = { Text("Search by name, email or role") },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = "Search", tint = Purple)
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Purple)
+                        }
+                    }
+                },
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    focusedBorderColor = Purple,
+                    unfocusedBorderColor = Orange,
+                    cursorColor = Purple
+                ),
+                shape = RoundedCornerShape(8.dp)
+            )
+
             if (uiState.isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -106,7 +145,7 @@ fun UserManagementScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(users) { user ->
+                    items(filteredUsers) { user ->
                         UserCard(
                             user = user,
                             onEdit = {
