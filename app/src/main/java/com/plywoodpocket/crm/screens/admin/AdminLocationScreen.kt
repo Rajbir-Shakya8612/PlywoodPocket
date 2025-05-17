@@ -64,6 +64,10 @@ import kotlin.math.pow
 import android.content.Intent
 import android.location.Location
 import android.net.Uri
+import android.content.pm.PackageManager
+import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.Job
+import androidx.compose.material.icons.filled.History
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class,
     ExperimentalLayoutApi::class
@@ -83,6 +87,7 @@ fun AdminLocationScreen(
     val sdf = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
     var startDate by remember { mutableStateOf(sdf.format(Date())) }
     var endDate by remember { mutableStateOf(sdf.format(Date())) }
+    var showTimelineDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         permissionState.launchPermissionRequest()
@@ -103,6 +108,16 @@ fun AdminLocationScreen(
         Column(modifier = Modifier.padding(padding)) {
             when (permissionState.status) {
                 is PermissionStatus.Granted -> {
+                    // List Icon above Load button
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        IconButton(onClick = { showTimelineDialog = true }) {
+                            Icon(Icons.Default.History, contentDescription = "Show Timeline List")
+                        }
+                    }
+
                     // Salesperson Dropdown
                     SalespersonDropdown(
                         salespersons = salespersons,
@@ -136,10 +151,74 @@ fun AdminLocationScreen(
                                     startDate = startDate,
                                     endDate = endDate
                                 )
+                                viewModel.startAutoRefresh()
                             },
                             modifier = Modifier.align(Alignment.CenterVertically)
                         ) {
                             Text("Load")
+                        }
+                    }
+
+                    // Timeline Dialog
+                    if (showTimelineDialog && state.detailedTracks != null) {
+                        val processedTracks = processTracksWithStayDuration(state.detailedTracks)
+                        val sortedTracks = processedTracks.sortedByDescending {
+                            parseDateTimeToMillis(it.date, it.time?.takeLast(8)) ?: 0L
+                        }
+                        Dialog(onDismissRequest = { showTimelineDialog = false }) {
+                            Surface(
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier
+                                    .fillMaxWidth(1f)
+                                    .widthIn(max = 420.dp)
+                            ) {
+                                Column(
+                                    Modifier
+                                        .padding(16.dp)
+                                        .fillMaxWidth()
+                                        .fillMaxHeight(0.85f)
+                                        .verticalScroll(rememberScrollState()),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text("Timeline", style = MaterialTheme.typography.titleMedium)
+                                    Spacer(Modifier.height(8.dp))
+                                    sortedTracks.forEach { track ->
+                                        Card(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                            Column(Modifier.padding(8.dp)) {
+                                                Text("User: ${track.user ?: "-"}")
+                                                Text("Date: ${track.date} ${track.time}")
+                                                Text("Type: ${track.type ?: "-"}")
+                                                if (!track.stay_duration.isNullOrEmpty() && track.stay_duration != "0") {
+                                                    Text("Stay Duration: ${track.stay_duration} min")
+                                                }
+                                                track.exit_timestamp?.let { Text("Exit: $it") }
+                                                Row(
+                                                    Modifier
+                                                        .padding(top = 4.dp)
+                                                        .fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    Button(
+                                                        onClick = { /* TODO: View on Map */ },
+                                                        modifier = Modifier.weight(1f),
+                                                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
+                                                    ) {
+                                                        Text("View on Map", fontSize = MaterialTheme.typography.bodySmall.fontSize)
+                                                    }
+                                                    Button(
+                                                        onClick = { /* TODO: Open in Google Maps */ },
+                                                        modifier = Modifier.weight(1f),
+                                                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
+                                                    ) {
+                                                        Text("Open in Google Maps", fontSize = MaterialTheme.typography.bodySmall.fontSize)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -158,15 +237,15 @@ fun AdminLocationScreen(
                                 Text("Error: ${state.error}", color = Color.Red)
                             }
                         } else if (state.detailedTracks != null) {
-                            val tracks = state.detailedTracks
-                            if (tracks.isEmpty()) {
+                            val processedTracks = processTracksWithStayDuration(state.detailedTracks)
+                            if (processedTracks.isEmpty()) {
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Text("No location data available for this range.")
                                 }
                             } else {
                                 // Use the reusable map section
                                 LocationMapSection(
-                                    tracks = tracks,
+                                    tracks = processedTracks,
                                     focusedTrack = null,
                                     showFullTrack = true
                                 )
@@ -330,6 +409,55 @@ fun clusterPoints(tracks: List<AdminLocationTrack>, precision: Int = 5): List<Cl
     }
 }
 
+// Helper to parse datetime string to milliseconds (handles both 'date time' and 'date'+'time')
+fun parseDateTimeToMillis(date: String?, time: String?): Long? {
+    return try {
+        val dt = if (time != null && time.contains(":")) "$date $time" else date
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+        dt?.let { sdf.parse(it)?.time }
+    } catch (e: Exception) { null }
+}
+
+// Process tracks to auto-calculate stay_duration if missing
+fun processTracksWithStayDuration(tracks: List<AdminLocationTrack>): List<AdminLocationTrack> {
+    if (tracks.isEmpty()) return tracks
+    // Sort tracks by datetime
+    val sortedTracks = tracks.sortedBy {
+        parseDateTimeToMillis(it.date, it.time?.takeLast(8)) ?: 0L
+    }
+    val processed = mutableListOf<AdminLocationTrack>()
+    var i = 0
+    while (i < sortedTracks.size) {
+        val current = sortedTracks[i]
+        val group = mutableListOf(current)
+        var lastLat = current.latitude.toDoubleOrNull() ?: 0.0
+        var lastLng = current.longitude.toDoubleOrNull() ?: 0.0
+        var j = i + 1
+        while (j < sortedTracks.size) {
+            val next = sortedTracks[j]
+            val lat2 = next.latitude.toDoubleOrNull() ?: 0.0
+            val lng2 = next.longitude.toDoubleOrNull() ?: 0.0
+            val results = FloatArray(1)
+            Location.distanceBetween(lastLat, lastLng, lat2, lng2, results)
+            if (results[0] <= 30) {
+                group.add(next)
+                lastLat = lat2
+                lastLng = lng2
+                j++
+            } else break
+        }
+        // Calculate stay_duration for the group
+        val startMillis = parseDateTimeToMillis(group.first().date, group.first().time?.takeLast(8))
+        val endMillis = parseDateTimeToMillis(group.last().date, group.last().time?.takeLast(8))
+        val stayDuration = if (startMillis != null && endMillis != null) ((endMillis - startMillis) / 60000).toString() else null
+        group.forEach { track ->
+            processed.add(track.copy(stay_duration = stayDuration ?: track.stay_duration))
+        }
+        i += group.size
+    }
+    return processed
+}
+
 @SuppressLint("MissingPermission")
 @Composable
 fun LocationMapSection(
@@ -337,7 +465,9 @@ fun LocationMapSection(
     focusedTrack: AdminLocationTrack?,
     showFullTrack: Boolean
 ) {
-    if (tracks.isEmpty()) {
+    // Process tracks to auto-calculate stay_duration
+    val processedTracks = remember(tracks) { processTracksWithStayDuration(tracks) }
+    if (processedTracks.isEmpty()) {
         Box(Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
             Text("No location data available")
         }
@@ -345,13 +475,14 @@ fun LocationMapSection(
     }
 
     val context = LocalContext.current
-    val clustered = remember(tracks) { clusterPoints(tracks) }
+    val clustered = remember(processedTracks) { clusterPoints(processedTracks) }
     val points = clustered.map { it.latLng }
     val apiKey = "AIzaSyCMSCNeXnT5y0CJdTAczN0y9uJe51mytRk" // TODO: Replace with your actual key
     var directionsPolyline by remember { mutableStateOf<List<LatLng>?>(null) }
     var selectedPoint by remember { mutableStateOf<ClusteredPoint?>(null) }
     var last10Locations by remember { mutableStateOf<List<LatLng>>(emptyList()) }
     var isSatelliteMode by remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf(false) }
 
     // Function to calculate distance between two points
     fun calculateDistance(point1: LatLng, point2: LatLng): Float {
@@ -366,27 +497,43 @@ fun LocationMapSection(
 
     // Function to get last 10 locations for a point
     fun getLast10Locations(point: ClusteredPoint) {
-        val pointTracks = tracks.filter { track ->
+        val pointTracks = processedTracks.filter { track ->
             val lat = track.latitude.toDoubleOrNull() ?: return@filter false
             val lng = track.longitude.toDoubleOrNull() ?: return@filter false
             val trackLatLng = LatLng(lat, lng)
             calculateDistance(trackLatLng, point.latLng) < 30 // Within 30 meters
         }.sortedByDescending { it.time }
-        last10Locations = pointTracks.take(10).map { 
+        last10Locations = pointTracks.take(10).map {
             LatLng(it.latitude.toDoubleOrNull() ?: 0.0, it.longitude.toDoubleOrNull() ?: 0.0)
         }
     }
 
-    // Function to open route in Google Maps
-    fun openInGoogleMaps(points: List<LatLng>) {
+    // Function to open route in Google Maps (robust)
+    fun openInGoogleMaps(context: android.content.Context, points: List<LatLng>) {
         if (points.size < 2) return
         val origin = "${points.first().latitude},${points.first().longitude}"
         val destination = "${points.last().latitude},${points.last().longitude}"
         val waypoints = points.drop(1).dropLast(1).joinToString("|") { "${it.latitude},${it.longitude}" }
         val url = "https://www.google.com/maps/dir/?api=1&origin=$origin&destination=$destination&waypoints=$waypoints"
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-        intent.setPackage("com.google.android.apps.maps")
+        // Check if Google Maps is installed
+        val pm = context.packageManager
+        val mapsInstalled = try {
+            pm.getPackageInfo("com.google.android.apps.maps", 0)
+            true
+        } catch (e: PackageManager.NameNotFoundException) {
+            false
+        }
+        if (mapsInstalled) {
+            intent.setPackage("com.google.android.apps.maps")
+        }
         context.startActivity(intent)
+    }
+
+    // Function to open last 10 locations in Google Maps
+    fun openLast10InGoogleMaps() {
+        if (last10Locations.size < 2) return
+        openInGoogleMaps(context, last10Locations)
     }
 
     LaunchedEffect(points) {
@@ -395,7 +542,7 @@ fun LocationMapSection(
             val filteredPoints = mutableListOf<LatLng>()
             var lastPoint = points.first()
             filteredPoints.add(lastPoint)
-            
+
             for (i in 1 until points.size) {
                 val currentPoint = points[i]
                 if (calculateDistance(lastPoint, currentPoint) > 30) {
@@ -403,7 +550,7 @@ fun LocationMapSection(
                     lastPoint = currentPoint
                 }
             }
-            
+
             if (filteredPoints.size >= 2) {
                 directionsPolyline = fetchDirectionsPolyline(filteredPoints, apiKey)
             }
@@ -420,24 +567,48 @@ fun LocationMapSection(
     }
 
     Column {
-        // Map type toggle
+        // Map type toggle and open in Google Maps
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(
-                onClick = { isSatelliteMode = !isSatelliteMode }
+                onClick = { isSatelliteMode = !isSatelliteMode },
+                modifier = Modifier.weight(1f)
             ) {
                 Text(if (isSatelliteMode) "Normal Map" else "Satellite Map")
             }
-            
             if (points.size >= 2) {
                 Button(
-                    onClick = { openInGoogleMaps(points) }
+                    onClick = { openInGoogleMaps(context, points) },
+                    modifier = Modifier.weight(1f)
                 ) {
                     Text("Open in Google Maps")
+                }
+            }
+        }
+
+        // Show dialog for last 10 locations if marker selected
+        if (showDialog && selectedPoint != null && last10Locations.size >= 2) {
+            Dialog(onDismissRequest = { showDialog = false }) {
+                Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
+                    Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Open last 10 locations in Google Maps?", style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(16.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Button(onClick = { showDialog = false }) {
+                                Text("Cancel")
+                            }
+                            Button(onClick = {
+                                showDialog = false
+                                openLast10InGoogleMaps()
+                            }) {
+                                Text("Open in Google Maps")
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -482,14 +653,16 @@ fun LocationMapSection(
                         }
                     )
                 }
+                val stayText = if (cluster.totalStay > 0) "Stayed ${cluster.totalStay} min" else ""
                 Marker(
                     state = MarkerState(position = cluster.latLng),
-                    title = "${idx + 1}. Point",
-                    snippet = "Visited ${cluster.count} times. ${if (cluster.totalStay > 0) "Stayed here for ${cluster.totalStay} min." else ""}",
+                    title = "${idx + 1}. Point${if (stayText.isNotEmpty()) " ($stayText)" else ""}",
+                    snippet = "Visited ${cluster.count} times.",
                     icon = iconBitmap,
                     onClick = {
                         selectedPoint = cluster
                         getLast10Locations(cluster)
+                        showDialog = true
                         true
                     }
                 )
@@ -513,7 +686,9 @@ fun LocationTrackListSection(
                     Text("User: ${track.user ?: "-"}")
                     Text("Date: ${track.date} ${track.time}")
                     Text("Type: ${track.type ?: "-"}")
-                    track.stay_duration?.let { Text("Stay Duration: $it") }
+                    if (!track.stay_duration.isNullOrEmpty() && track.stay_duration != "0") {
+                        Text("Stay Duration: ${track.stay_duration} min")
+                    }
                     track.exit_timestamp?.let { Text("Exit: $it") }
                     Row(Modifier.padding(top = 4.dp)) {
                         Button(onClick = { onViewOnMap(track) }) {
@@ -607,6 +782,12 @@ class AdminLocationViewModel(private val apiService: ApiService) : ViewModel() {
     private val _showFullTrack = mutableStateOf(true)
     val showFullTrack: State<Boolean> = _showFullTrack
 
+    // For auto-refresh job
+    private var autoRefreshJob: Job? = null
+    private var lastUserId: Int? = null
+    private var lastStartDate: String? = null
+    private var lastEndDate: String? = null
+
     fun focusTrack(track: AdminLocationTrack?) {
         _focusedTrack.value = track
         _showFullTrack.value = false
@@ -636,6 +817,10 @@ class AdminLocationViewModel(private val apiService: ApiService) : ViewModel() {
     }
 
     fun fetchDetailedTracks(userId: Int? = null, startDate: String? = null, endDate: String? = null) {
+        // Save last params for auto-refresh
+        if (userId != null) lastUserId = userId
+        if (startDate != null) lastStartDate = startDate
+        if (endDate != null) lastEndDate = endDate
         _state.value = _state.value.copy(isLoading = true, error = null)
         viewModelScope.launch {
             try {
@@ -653,6 +838,27 @@ class AdminLocationViewModel(private val apiService: ApiService) : ViewModel() {
                 _state.value = _state.value.copy(isLoading = false, error = e.localizedMessage)
             }
         }
+    }
+
+    fun startAutoRefresh() {
+        autoRefreshJob?.cancel()
+        autoRefreshJob = viewModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(5 * 60 * 1000) // 5 minutes
+                if (lastUserId != null && lastStartDate != null && lastEndDate != null) {
+                    fetchDetailedTracks(lastUserId, lastStartDate, lastEndDate)
+                }
+            }
+        }
+    }
+
+    fun stopAutoRefresh() {
+        autoRefreshJob?.cancel()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        autoRefreshJob?.cancel()
     }
 }
 
