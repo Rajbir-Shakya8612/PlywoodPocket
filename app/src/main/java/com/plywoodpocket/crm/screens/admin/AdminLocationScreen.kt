@@ -80,7 +80,7 @@ fun AdminLocationScreen(
     val viewModel: AdminLocationViewModel = viewModel(
         factory = AdminLocationViewModelFactory(ApiClient(TokenManager(context)).apiService)
     )
-    val state = viewModel.state.value
+    val state by viewModel.state
     val salespersons by viewModel.salespersons
     val selectedSalesperson by viewModel.selectedSalesperson
     val permissionState = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -88,6 +88,7 @@ fun AdminLocationScreen(
     var startDate by remember { mutableStateOf(sdf.format(Date())) }
     var endDate by remember { mutableStateOf(sdf.format(Date())) }
     var showTimelineDialog by remember { mutableStateOf(false) }
+    var focusedTrackForDialog by remember { mutableStateOf<AdminLocationTrack?>(null) }
 
     LaunchedEffect(Unit) {
         permissionState.launchPermissionRequest()
@@ -161,7 +162,7 @@ fun AdminLocationScreen(
 
                     // Timeline Dialog
                     if (showTimelineDialog && state.detailedTracks != null) {
-                        val processedTracks = processTracksWithStayDuration(state.detailedTracks)
+                        val processedTracks = processTracksWithStayDuration(state.detailedTracks ?: emptyList())
                         val sortedTracks = processedTracks.sortedByDescending {
                             parseDateTimeToMillis(it.date, it.time?.takeLast(8)) ?: 0L
                         }
@@ -205,14 +206,28 @@ fun AdminLocationScreen(
                                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                                 ) {
                                                     Button(
-                                                        onClick = { /* TODO: View on Map */ },
+                                                        onClick = {
+                                                            focusedTrackForDialog = track
+                                                            showTimelineDialog = false
+                                                        },
                                                         modifier = Modifier.weight(1f).heightIn(min = 36.dp),
                                                         contentPadding = PaddingValues(vertical = 4.dp, horizontal = 0.dp)
                                                     ) {
                                                         Text("View on Map", style = MaterialTheme.typography.bodySmall, maxLines = 1)
                                                     }
                                                     Button(
-                                                        onClick = { /* TODO: Open in Google Maps */ },
+                                                        onClick = {
+                                                            // Open in Google Maps logic
+                                                            val lat = track.latitude.toDoubleOrNull()
+                                                            val lng = track.longitude.toDoubleOrNull()
+                                                            if (lat != null && lng != null) {
+                                                                val gmmIntentUri = Uri.parse("geo:$lat,$lng?q=$lat,$lng")
+                                                                val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                                                                mapIntent.setPackage("com.google.android.apps.maps")
+                                                                context.startActivity(mapIntent)
+                                                            }
+                                                            showTimelineDialog = false
+                                                        },
                                                         modifier = Modifier.weight(1f).heightIn(min = 36.dp),
                                                         contentPadding = PaddingValues(vertical = 4.dp, horizontal = 0.dp)
                                                     ) {
@@ -241,8 +256,8 @@ fun AdminLocationScreen(
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("Error: ${state.error}", color = Color.Red)
                             }
-                        } else if (state.detailedTracks != null) {
-                            val processedTracks = processTracksWithStayDuration(state.detailedTracks)
+                        } else if ((state.detailedTracks ?: emptyList()).isNotEmpty()) {
+                            val processedTracks = processTracksWithStayDuration(state.detailedTracks ?: emptyList())
                             if (processedTracks.isEmpty()) {
                                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Text("No location data available for this range.")
@@ -251,9 +266,15 @@ fun AdminLocationScreen(
                                 // Use the reusable map section
                                 LocationMapSection(
                                     tracks = processedTracks,
-                                    focusedTrack = null,
-                                    showFullTrack = true
+                                    focusedTrack = focusedTrackForDialog,
+                                    showFullTrack = focusedTrackForDialog == null
                                 )
+                                // Reset focus after showing
+                                if (focusedTrackForDialog != null) {
+                                    LaunchedEffect(focusedTrackForDialog) {
+                                        focusedTrackForDialog = null
+                                    }
+                                }
                             }
                         }
                     }
