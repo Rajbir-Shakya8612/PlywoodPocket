@@ -47,6 +47,23 @@ import com.google.accompanist.permissions.PermissionStatus
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Arrangement
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Typeface
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.applyCanvas
+import androidx.compose.ui.graphics.asAndroidBitmap
+import kotlin.math.round
+import kotlin.math.pow
+import android.content.Intent
+import android.location.Location
+import android.net.Uri
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class,
     ExperimentalLayoutApi::class
@@ -204,6 +221,115 @@ fun LocationStatsSection(stats: AdminLocationStats) {
     }
 }
 
+suspend fun fetchDirectionsPolyline(points: List<LatLng>, apiKey: String): List<LatLng>? {
+    if (points.size < 2) return null
+    val origin = "${points.first().latitude},${points.first().longitude}"
+    val destination = "${points.last().latitude},${points.last().longitude}"
+    val waypoints = points.drop(1).dropLast(1).joinToString("|") { "${it.latitude},${it.longitude}" }
+    val url = buildString {
+        append("https://maps.googleapis.com/maps/api/directions/json?")
+        append("origin=$origin&destination=$destination")
+        if (waypoints.isNotEmpty()) append("&waypoints=$waypoints")
+        append("&mode=driving&key=$apiKey")
+    }
+    return withContext(Dispatchers.IO) {
+        try {
+            val client = OkHttpClient()
+            val request = Request.Builder().url(url).build()
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: return@withContext null
+            val json = JSONObject(body)
+            val routes = json.getJSONArray("routes")
+            if (routes.length() == 0) return@withContext null
+            val overviewPolyline = routes.getJSONObject(0).getJSONObject("overview_polyline").getString("points")
+            decodePolyline(overviewPolyline)
+        } catch (e: Exception) {
+            null
+        }
+    }
+}
+
+fun decodePolyline(encoded: String): List<LatLng> {
+    val poly = ArrayList<LatLng>()
+    var index = 0
+    val len = encoded.length
+    var lat = 0
+    var lng = 0
+    while (index < len) {
+        var b: Int
+        var shift = 0
+        var result = 0
+        do {
+            b = encoded[index++].code - 63
+            result = result or (b and 0x1f shl shift)
+            shift += 5
+        } while (b >= 0x20)
+        val dlat = if ((result and 1) != 0) (result shr 1).inv() else (result shr 1)
+        lat += dlat
+        shift = 0
+        result = 0
+        do {
+            b = encoded[index++].code - 63
+            result = result or (b and 0x1f shl shift)
+            shift += 5
+        } while (b >= 0x20)
+        val dlng = if ((result and 1) != 0) (result shr 1).inv() else (result shr 1)
+        lng += dlng
+        poly.add(LatLng(lat / 1E5, lng / 1E5))
+    }
+    return poly
+}
+
+fun createNumberedMarkerIcon(context: android.content.Context, number: Int): Bitmap {
+    val size = 80
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val paint = Paint().apply {
+        color = android.graphics.Color.BLUE
+        style = Paint.Style.FILL
+        isAntiAlias = true
+    }
+    // Draw circle
+    canvas.drawCircle(size / 2f, size / 2f, size / 2.2f, paint)
+    // Draw number
+    paint.color = android.graphics.Color.WHITE
+    paint.textSize = 36f
+    paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    paint.textAlign = Paint.Align.CENTER
+    val y = (size / 2f) - ((paint.descent() + paint.ascent()) / 2)
+    canvas.drawText(number.toString(), size / 2f, y, paint)
+    return bitmap
+}
+
+data class ClusteredPoint(
+    val latLng: LatLng,
+    val count: Int,
+    val times: List<String?>,
+    val totalStay: Int // in minutes
+)
+
+fun clusterPoints(tracks: List<AdminLocationTrack>, precision: Int = 5): List<ClusteredPoint> {
+    val map = mutableMapOf<Pair<Double, Double>, MutableList<AdminLocationTrack>>()
+    for (track in tracks) {
+        val lat = track.latitude.toDoubleOrNull() ?: continue
+        val lng = track.longitude.toDoubleOrNull() ?: continue
+        val factor = 10.0.pow(precision)
+        val key = Pair(round(lat * factor) / factor, round(lng * factor) / factor)
+        map.getOrPut(key) { mutableListOf<AdminLocationTrack>() }.add(track)
+    }
+    return map.map { (key: Pair<Double, Double>, group: MutableList<AdminLocationTrack>) ->
+        val totalStay = group.sumOf {
+            it.stay_duration?.toIntOrNull() ?: 0
+        }
+        ClusteredPoint(
+            latLng = LatLng(key.first, key.second),
+            count = group.size,
+            times = group.map { it.time },
+            totalStay = totalStay
+        )
+    }
+}
+
 @SuppressLint("MissingPermission")
 @Composable
 fun LocationMapSection(
@@ -217,54 +343,157 @@ fun LocationMapSection(
         }
         return
     }
-    val points = tracks.mapNotNull { it.latLng() }
+
+    val context = LocalContext.current
+    val clustered = remember(tracks) { clusterPoints(tracks) }
+    val points = clustered.map { it.latLng }
+    val apiKey = "AIzaSyCMSCNeXnT5y0CJdTAczN0y9uJe51mytRk" // TODO: Replace with your actual key
+    var directionsPolyline by remember { mutableStateOf<List<LatLng>?>(null) }
+    var selectedPoint by remember { mutableStateOf<ClusteredPoint?>(null) }
+    var last10Locations by remember { mutableStateOf<List<LatLng>>(emptyList()) }
+    var isSatelliteMode by remember { mutableStateOf(false) }
+
+    // Function to calculate distance between two points
+    fun calculateDistance(point1: LatLng, point2: LatLng): Float {
+        val results = FloatArray(1)
+        Location.distanceBetween(
+            point1.latitude, point1.longitude,
+            point2.latitude, point2.longitude,
+            results
+        )
+        return results[0]
+    }
+
+    // Function to get last 10 locations for a point
+    fun getLast10Locations(point: ClusteredPoint) {
+        val pointTracks = tracks.filter { track ->
+            val lat = track.latitude.toDoubleOrNull() ?: return@filter false
+            val lng = track.longitude.toDoubleOrNull() ?: return@filter false
+            val trackLatLng = LatLng(lat, lng)
+            calculateDistance(trackLatLng, point.latLng) < 30 // Within 30 meters
+        }.sortedByDescending { it.time }
+        last10Locations = pointTracks.take(10).map { 
+            LatLng(it.latitude.toDoubleOrNull() ?: 0.0, it.longitude.toDoubleOrNull() ?: 0.0)
+        }
+    }
+
+    // Function to open route in Google Maps
+    fun openInGoogleMaps(points: List<LatLng>) {
+        if (points.size < 2) return
+        val origin = "${points.first().latitude},${points.first().longitude}"
+        val destination = "${points.last().latitude},${points.last().longitude}"
+        val waypoints = points.drop(1).dropLast(1).joinToString("|") { "${it.latitude},${it.longitude}" }
+        val url = "https://www.google.com/maps/dir/?api=1&origin=$origin&destination=$destination&waypoints=$waypoints"
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        intent.setPackage("com.google.android.apps.maps")
+        context.startActivity(intent)
+    }
+
+    LaunchedEffect(points) {
+        if (points.size >= 2) {
+            // Only fetch directions for points more than 30m apart
+            val filteredPoints = mutableListOf<LatLng>()
+            var lastPoint = points.first()
+            filteredPoints.add(lastPoint)
+            
+            for (i in 1 until points.size) {
+                val currentPoint = points[i]
+                if (calculateDistance(lastPoint, currentPoint) > 30) {
+                    filteredPoints.add(currentPoint)
+                    lastPoint = currentPoint
+                }
+            }
+            
+            if (filteredPoints.size >= 2) {
+                directionsPolyline = fetchDirectionsPolyline(filteredPoints, apiKey)
+            }
+        }
+    }
+
     val cameraPositionState = rememberCameraPositionState {
         position = when {
+            selectedPoint != null -> CameraPosition.fromLatLngZoom(selectedPoint!!.latLng, 16f)
             focusedTrack?.latLng() != null -> CameraPosition.fromLatLngZoom(focusedTrack.latLng()!!, 16f)
             points.isNotEmpty() -> CameraPosition.fromLatLngZoom(points.first(), 12f)
             else -> CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 1f)
         }
     }
-    GoogleMap(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(400.dp),
-        cameraPositionState = cameraPositionState
-    ) {
-        if (showFullTrack) {
-            // All markers and polyline
-            tracks.forEachIndexed { idx, track ->
-                val isCurrent = idx == tracks.lastIndex
-                track.latLng()?.let { latLng ->
-                    Marker(
-                        state = MarkerState(position = latLng),
-                        title = track.user ?: "User",
-                        snippet = buildString {
-                            append("${track.date} ${track.time}")
-                            track.stay_duration?.let { append("\nStay: $it") }
-                            track.exit_timestamp?.let { append("\nExit: $it") }
-                        },
-                        icon = if (isCurrent) BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN) else null
-                    )
+
+    Column {
+        // Map type toggle
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Button(
+                onClick = { isSatelliteMode = !isSatelliteMode }
+            ) {
+                Text(if (isSatelliteMode) "Normal Map" else "Satellite Map")
+            }
+            
+            if (points.size >= 2) {
+                Button(
+                    onClick = { openInGoogleMaps(points) }
+                ) {
+                    Text("Open in Google Maps")
                 }
             }
+        }
+
+        GoogleMap(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(500.dp),
+            cameraPositionState = cameraPositionState,
+            properties = MapProperties(
+                isMyLocationEnabled = true,
+                mapType = if (isSatelliteMode) MapType.SATELLITE else MapType.NORMAL
+            ),
+            uiSettings = MapUiSettings(zoomControlsEnabled = true)
+        ) {
+            // Draw main route
+            val polylineToDraw = directionsPolyline ?: points
             Polyline(
-                points = points,
-                color = Color(0xFF4CAF50), // Green
-                width = 6f
+                points = polylineToDraw,
+                color = Color.Blue,
+                width = 8f
             )
-        } else if (focusedTrack?.latLng() != null) {
-            // Only focused marker
-            Marker(
-                state = MarkerState(position = focusedTrack.latLng()!!),
-                title = focusedTrack.user ?: "User",
-                snippet = buildString {
-                    append("${focusedTrack.date} ${focusedTrack.time}")
-                    focusedTrack.stay_duration?.let { append("\nStay: ${focusedTrack.stay_duration}") }
-                    focusedTrack.exit_timestamp?.let { append("\nExit: ${focusedTrack.exit_timestamp}") }
-                },
-                icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
-            )
+
+            // Draw last 10 locations if a point is selected
+            if (selectedPoint != null && last10Locations.isNotEmpty()) {
+                Polyline(
+                    points = last10Locations,
+                    color = Color.Red,
+                    width = 4f
+                )
+            }
+
+            clustered.forEachIndexed { idx, cluster ->
+                val iconBitmap = try {
+                    BitmapDescriptorFactory.fromBitmap(createNumberedMarkerIcon(context, idx + 1))
+                } catch (e: Exception) {
+                    BitmapDescriptorFactory.defaultMarker(
+                        when (idx) {
+                            0 -> BitmapDescriptorFactory.HUE_GREEN
+                            clustered.lastIndex -> BitmapDescriptorFactory.HUE_RED
+                            else -> BitmapDescriptorFactory.HUE_AZURE
+                        }
+                    )
+                }
+                Marker(
+                    state = MarkerState(position = cluster.latLng),
+                    title = "${idx + 1}. Point",
+                    snippet = "Visited ${cluster.count} times. ${if (cluster.totalStay > 0) "Stayed here for ${cluster.totalStay} min." else ""}",
+                    icon = iconBitmap,
+                    onClick = {
+                        selectedPoint = cluster
+                        getLast10Locations(cluster)
+                        true
+                    }
+                )
+            }
         }
     }
 }
