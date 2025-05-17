@@ -48,6 +48,8 @@ import com.plywoodpocket.crm.screens.AppNavHost
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -244,25 +246,32 @@ fun DashboardScreen(
     var selectedIndex by remember { mutableStateOf(2) }
     var searchQuery by remember { mutableStateOf("") }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(White)
-    ) {
-        Spacer(modifier = Modifier.height(36.dp))
-        SearchBar(
-            query = searchQuery,
-            onQueryChange = { searchQuery = it }
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        BankCard()
-        Spacer(modifier = Modifier.height(24.dp))
-        InfiniteCardView()
-        Spacer(modifier = Modifier.height(16.dp))
-        TabRowSection(selectedTab) { selectedTab = it }
-        Spacer(modifier = Modifier.height(16.dp))
-        GridMenu(searchQuery, onAttendanceClick, onLeadsClick)
-        Spacer(modifier = Modifier.weight(1f))
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Spacer(modifier = Modifier.height(36.dp))
+            SearchBar(query = searchQuery, onQueryChange = { searchQuery = it })
+            Spacer(modifier = Modifier.height(24.dp))
+            BankCard()
+            Spacer(modifier = Modifier.height(24.dp))
+            InfiniteCardView()
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // SCROLLABLE SECTION
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 72.dp)
+                    .navigationBarsPadding()
+            ) {
+                TabRowSection(selectedTab) { selectedTab = it }
+                Spacer(modifier = Modifier.height(16.dp))
+                GridMenu(searchQuery, onAttendanceClick, onLeadsClick)
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
         BottomNavBar(
             selectedIndex = selectedIndex,
             setSelectedIndex = { selectedIndex = it },
@@ -270,7 +279,10 @@ fun DashboardScreen(
             setSelectedTab = { selectedTab = it },
             onProfileClick = { navController.navigate("profile") },
             onLogout = { onLogout() },
-            modifier = Modifier.navigationBarsPadding()
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .navigationBarsPadding()
         )
     }
 }
