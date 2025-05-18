@@ -243,7 +243,8 @@ fun MainScreen(activity: MainActivity) {
                         authViewModel.logout()
                     },
                     onAttendanceClick = { showAttendanceScreen = true },
-                    onLeadsClick = { showLeadsScreen = true }
+                    onLeadsClick = { showLeadsScreen = true },
+                    onPlansClick = { navController.navigate("plans") }
                 )
             }
 
@@ -274,7 +275,8 @@ fun DashboardScreen(
     navController: NavController,
     onLogout: () -> Unit,
     onAttendanceClick: () -> Unit,
-    onLeadsClick: () -> Unit
+    onLeadsClick: () -> Unit,
+    onPlansClick: () -> Unit
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     var selectedIndex by remember { mutableStateOf(2) }
@@ -313,7 +315,7 @@ fun DashboardScreen(
             ) {
                 TabRowSection(selectedTab) { selectedTab = it }
                 Spacer(modifier = Modifier.height(16.dp))
-                GridMenu(searchQuery, onAttendanceClick, onLeadsClick)
+                GridMenu(searchQuery, onAttendanceClick, onLeadsClick, onPlansClick)
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
@@ -450,7 +452,7 @@ fun TabItem(title: String, selected: Boolean, modifier: Modifier = Modifier, onC
 }
 
 @Composable
-fun GridMenu(searchQuery: String, onAttendanceClick: () -> Unit, onLeadsClick: () -> Unit) {
+fun GridMenu(searchQuery: String, onAttendanceClick: () -> Unit, onLeadsClick: () -> Unit, onPlansClick: () -> Unit) {
     val homeItems = listOf(
         Triple("Attendance", android.R.drawable.ic_menu_my_calendar, Color(0xFF1976D2)),
         Triple("Plans", android.R.drawable.ic_menu_compass, Color(0xFF1976D2)),
@@ -482,7 +484,8 @@ fun GridMenu(searchQuery: String, onAttendanceClick: () -> Unit, onLeadsClick: (
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 MenuItem("Attendance", android.R.drawable.ic_menu_my_calendar, Color(0xFF1976D2), onClick = onAttendanceClick)
-                homeItems.drop(1).forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
+                MenuItem("Plans", android.R.drawable.ic_menu_compass, Color(0xFF1976D2), onClick = onPlansClick)
+                homeItems.drop(2).forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
             }
             Spacer(modifier = Modifier.width(24.dp))
             Column(

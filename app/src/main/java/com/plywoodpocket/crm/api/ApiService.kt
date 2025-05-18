@@ -174,4 +174,33 @@ interface ApiService {
         @Query("end_date") endDate: String? = null
     ): Response<AdminLocationDetailedTracksResponse>
 
+    // Plans endpoints
+    @Headers("Accept: application/json")
+    @GET("/api/salesperson/plans")
+    suspend fun getPlans(@Query("type") type: String): Response<com.plywoodpocket.crm.models.PlanResponse>
+
+    @Headers("Accept: application/json")
+    @POST("/api/salesperson/plans")
+    suspend fun createPlan(@Body plan: com.plywoodpocket.crm.models.PlanRequest): Response<com.plywoodpocket.crm.models.PlanResponse>
+
+    @Headers("Accept: application/json")
+    @GET("/api/salesperson/plans/{id}/ajax-show")
+    suspend fun getPlanDetails(@Path("id") id: Int): Response<com.plywoodpocket.crm.models.PlanResponse>
+
+    @Headers("Accept: application/json")
+    @PUT("/api/salesperson/plans/{id}")
+    suspend fun updatePlan(@Path("id") id: Int, @Body plan: com.plywoodpocket.crm.models.PlanRequest): Response<com.plywoodpocket.crm.models.PlanResponse>
+
+    @Headers("Accept: application/json")
+    @GET("/api/salesperson/plans/current-month")
+    suspend fun getCurrentMonthPlan(): Response<com.plywoodpocket.crm.models.PlanResponse>
+
+    @Headers("Accept: application/json")
+    @GET("/api/salesperson/plans/quarterly")
+    suspend fun getQuarterlyPlans(): Response<com.plywoodpocket.crm.models.PlanResponse>
+
+    @Headers("Accept: application/json")
+    @GET("/api/salesperson/plans/yearly")
+    suspend fun getYearlyPlans(): Response<com.plywoodpocket.crm.models.PlanResponse>
+
 } 

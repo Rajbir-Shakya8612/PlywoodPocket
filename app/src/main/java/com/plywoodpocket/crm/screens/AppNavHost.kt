@@ -128,6 +128,9 @@ fun AppNavHost(
                 },
                 onLeadsClick = {
                     navController.navigate("leads")
+                },
+                onPlansClick = {
+                    navController.navigate("plans")
                 }
             )
         }
@@ -200,6 +203,10 @@ fun AppNavHost(
             AdminLocationScreen(
                 onBack = { navController.popBackStack() }
             )
+        }
+
+        composable("plans") {
+            PlansScreen(onBack = { navController.popBackStack() })
         }
     }
 } 

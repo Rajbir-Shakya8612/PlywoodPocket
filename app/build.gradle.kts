@@ -108,10 +108,12 @@ dependencies {
     // Calendar Compose Library
     implementation("com.kizitonwose.calendar:compose:2.4.0")
 
-    // Coroutines (MISSING EARLIER)
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-
     // Google Maps Compose
     implementation("com.google.maps.android:maps-compose:4.2.0")
+
+    // MPAndroidChart
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
+    // kotlinx-datetime
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
 }
