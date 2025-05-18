@@ -45,13 +45,13 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
+        kotlinCompilerExtensionVersion = "1.6.10"
     }
 }
 
 dependencies {
-    // Jetpack Compose BOM
-    val composeBom = platform("androidx.compose:compose-bom:2024.02.00")
+    // Jetpack Compose BOM (latest stable)
+    val composeBom = platform("androidx.compose:compose-bom:2024.04.01")
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
@@ -71,12 +71,10 @@ dependencies {
 
     // Compose UI
     implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-
-    // Navigation
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.navigation:navigation-compose:2.7.7")
 
     // Coil (image loading)
