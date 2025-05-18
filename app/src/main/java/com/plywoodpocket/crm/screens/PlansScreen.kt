@@ -168,6 +168,14 @@ fun PlanCard(plan: Plan, onDetailsClick: () -> Unit) {
     val startDate = formatIsoToDate(plan.startDate)
     val endDate = formatIsoToDate(plan.endDate)
     val salesTarget = plan.salesTarget.toDoubleOrNull() ?: 0.0
+    val (leadsAchieved, salesAchieved) = try {
+        if (plan.achievements.isJsonObject) {
+            val obj = plan.achievements.asJsonObject
+            val leads = obj["leads"]?.asInt ?: 0
+            val sales = obj["sales"]?.asInt ?: 0
+            leads to sales
+        } else 0 to 0
+    } catch (_: Exception) { 0 to 0 }
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -182,11 +190,11 @@ fun PlanCard(plan: Plan, onDetailsClick: () -> Unit) {
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
-                text = "Leads: 0/${plan.leadTarget}",
+                text = "Leads: $leadsAchieved/${plan.leadTarget}",
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(
-                text = "Sales: ₹0/₹$salesTarget",
+                text = "Sales: ₹$salesAchieved/₹$salesTarget",
                 style = MaterialTheme.typography.bodyMedium
             )
             LinearProgressIndicator(
@@ -389,6 +397,14 @@ fun PlanDetailsDialog(plan: Plan, onDismiss: () -> Unit) {
     val startDate = formatIsoToDate(plan.startDate)
     val endDate = formatIsoToDate(plan.endDate)
     val salesTarget = plan.salesTarget.toDoubleOrNull() ?: 0.0
+    val (leadsAchieved, salesAchieved) = try {
+        if (plan.achievements.isJsonObject) {
+            val obj = plan.achievements.asJsonObject
+            val leads = obj["leads"]?.asInt ?: 0
+            val sales = obj["sales"]?.asInt ?: 0
+            leads to sales
+        } else 0 to 0
+    } catch (_: Exception) { 0 to 0 }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -407,8 +423,8 @@ fun PlanDetailsDialog(plan: Plan, onDismiss: () -> Unit) {
             Column {
                 Text("Start Date: ${startDate ?: "-"}")
                 Text("End Date: ${endDate ?: "-"}")
-                Text("Achieved Leads: 0")
-                Text("Achieved Sales: ₹0")
+                Text("Achieved Leads: $leadsAchieved")
+                Text("Achieved Sales: ₹$salesAchieved")
                 Text("Lead Target: ${plan.leadTarget}")
                 Text("Sales Target: ₹$salesTarget")
                 Text("Status: ${plan.status.capitalize()}")

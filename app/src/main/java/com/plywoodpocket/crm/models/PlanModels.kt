@@ -1,6 +1,7 @@
 package com.plywoodpocket.crm.models
 
 import com.google.gson.annotations.SerializedName
+import com.google.gson.JsonElement
 
 // Sales Plan Models
 
@@ -16,7 +17,7 @@ data class Plan(
     @SerializedName("sales_target") val salesTarget: String,
     @SerializedName("description") val description: String,
     @SerializedName("status") val status: String,
-    @SerializedName("achievements") val achievements: String,
+    @SerializedName("achievements") val achievements: JsonElement,
     @SerializedName("notes") val notes: String?,
     @SerializedName("progress_percentage") val progressPercentage: Int
 )

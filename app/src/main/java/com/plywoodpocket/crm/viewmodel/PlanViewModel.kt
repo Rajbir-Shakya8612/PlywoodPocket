@@ -1,5 +1,6 @@
 package com.plywoodpocket.crm.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -45,11 +46,8 @@ class PlanViewModel(
                     _error.value = errorMsg
                 }
             } catch (e: Exception) {
-                _error.value = if (e.message?.contains("BEGIN_OBJECT") == true) {
-                    "Session expired or server error. Please login again."
-                } else {
-                    e.message
-                }
+                Log.e("PlanViewModel", "Error loading plans", e)
+                _error.value = "Failed to load plans. Please try again."
             }
             _isLoading.value = false
         }
