@@ -9,9 +9,11 @@ import com.plywoodpocket.crm.models.LoginRequest
 import com.plywoodpocket.crm.models.RegisterRequest
 import com.plywoodpocket.crm.models.Role
 import com.plywoodpocket.crm.utils.TokenManager
+import com.plywoodpocket.crm.utils.LocationHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 
 sealed class AuthState {
     object Idle : AuthState()
@@ -22,6 +24,7 @@ sealed class AuthState {
 
 class AuthViewModel(context: Context) : ViewModel() {
 
+    private val appContext = context
     private val tokenManager = TokenManager(context)
     private val apiService = ApiClient(tokenManager).apiService
 
@@ -74,6 +77,12 @@ class AuthViewModel(context: Context) : ViewModel() {
                         _isLoggedIn.value = true
                         _userRole.value = loginResponse.user.role.slug
                         _authState.value = AuthState.Success("Login successful")
+                        // Fetch live location in background to warm up GPS
+                        launch(Dispatchers.IO) {
+                            try {
+                                LocationHelper.getCurrentLocation(appContext)
+                            } catch (_: Exception) {}
+                        }
                     } else {
                         _authState.value = AuthState.Error("Login failed: Empty response")
                     }

@@ -21,50 +21,46 @@ object LocationHelper {
     @SuppressLint("MissingPermission")
     suspend fun getCurrentLocation(context: Context): Location? {
         val fusedClient = getFusedLocationProvider(context)
+        val maxWaitMillis = 5000L // 5 seconds
+        val minAccuracy = 50f // meters
 
+        // Try last location, but only if it's very recent and accurate
         try {
-            // First try to get last known location immediately
             val lastLocation = fusedClient.lastLocation.await()
             if (lastLocation != null) {
-                return lastLocation
+                val now = System.currentTimeMillis()
+                val isRecent = (now - lastLocation.time) < 10_000 // 10 seconds
+                val isAccurate = lastLocation.accuracy < minAccuracy
+                if (isRecent && isAccurate) {
+                    return lastLocation
+                }
             }
-        } catch (e: Exception) {
-            // If last location fails, continue with requesting new location
-        }
+        } catch (_: Exception) {}
 
-        // If last location is not available, request new location
+        // Request a new location update and wait for a good fix
         val request = LocationRequest.Builder(
-            Priority.PRIORITY_HIGH_ACCURACY, 500 // interval 0.5 second
+            Priority.PRIORITY_HIGH_ACCURACY, 1000
         )
-            .setMaxUpdates(1)
-            .setMinUpdateIntervalMillis(500)
-            .setMaxUpdateDelayMillis(1000)
+            .setMaxUpdates(5)
+            .setMinUpdateIntervalMillis(1000)
+            .setMaxUpdateDelayMillis(maxWaitMillis)
             .build()
 
-        var isResumed = false
-
         return suspendCancellableCoroutine { cont ->
-            fusedClient.requestLocationUpdates(
-                request,
-                object : com.google.android.gms.location.LocationCallback() {
-                    override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
-                        if (!isResumed) {
-                            isResumed = true
-                            fusedClient.removeLocationUpdates(this)
-                            val location = result.lastLocation
-                            cont.resume(location)
-                        }
+            val startTime = System.currentTimeMillis()
+            val callback = object : com.google.android.gms.location.LocationCallback() {
+                override fun onLocationResult(result: com.google.android.gms.location.LocationResult) {
+                    val location = result.lastLocation
+                    val isAccurate = location != null && location.accuracy < minAccuracy
+                    val isTimeout = System.currentTimeMillis() - startTime > maxWaitMillis
+                    if (isAccurate || isTimeout) {
+                        fusedClient.removeLocationUpdates(this)
+                        cont.resume(location)
                     }
-
-                    override fun onLocationAvailability(p0: com.google.android.gms.location.LocationAvailability) {
-                        if (!p0.isLocationAvailable && !isResumed) {
-                            isResumed = true
-                            cont.resume(null)
-                        }
-                    }
-                },
-                null
-            )
+                }
+            }
+            fusedClient.requestLocationUpdates(request, callback, null)
+            cont.invokeOnCancellation { fusedClient.removeLocationUpdates(callback) }
         }
     }
 
