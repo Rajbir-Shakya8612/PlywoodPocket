@@ -89,6 +89,10 @@ fun AdminLocationScreen(
     var endDate by remember { mutableStateOf(sdf.format(Date())) }
     var showTimelineDialog by remember { mutableStateOf(false) }
     var focusedTrackForDialog by remember { mutableStateOf<AdminLocationTrack?>(null) }
+    val cameraPositionState = rememberCameraPositionState()
+    var showDialog by remember { mutableStateOf(false) }
+    var last10Locations by remember { mutableStateOf<List<LatLng>>(emptyList()) }
+    var selectedClusterIndex by remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(Unit) {
         permissionState.launchPermissionRequest()
@@ -267,11 +271,13 @@ fun AdminLocationScreen(
                                 LocationMapSection(
                                     tracks = processedTracks,
                                     focusedTrack = focusedTrackForDialog,
-                                    showFullTrack = focusedTrackForDialog == null
+                                    showFullTrack = focusedTrackForDialog == null,
+                                    cameraPositionState = cameraPositionState
                                 )
                                 // Reset focus after showing
                                 if (focusedTrackForDialog != null) {
                                     LaunchedEffect(focusedTrackForDialog) {
+                                        kotlinx.coroutines.delay(300)
                                         focusedTrackForDialog = null
                                     }
                                 }
@@ -489,7 +495,8 @@ fun processTracksWithStayDuration(tracks: List<AdminLocationTrack>): List<AdminL
 fun LocationMapSection(
     tracks: List<AdminLocationTrack>,
     focusedTrack: AdminLocationTrack?,
-    showFullTrack: Boolean
+    showFullTrack: Boolean,
+    cameraPositionState: CameraPositionState
 ) {
     // Process tracks to auto-calculate stay_duration
     val processedTracks = remember(tracks) { processTracksWithStayDuration(tracks) }
@@ -509,6 +516,7 @@ fun LocationMapSection(
     var last10Locations by remember { mutableStateOf<List<LatLng>>(emptyList()) }
     var isSatelliteMode by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
+    var selectedClusterIndex by remember { mutableStateOf<Int?>(null) }
 
     // Function to calculate distance between two points
     fun calculateDistance(point1: LatLng, point2: LatLng): Float {
@@ -583,12 +591,9 @@ fun LocationMapSection(
         }
     }
 
-    val cameraPositionState = rememberCameraPositionState {
-        position = when {
-            selectedPoint != null -> CameraPosition.fromLatLngZoom(selectedPoint!!.latLng, 16f)
-            focusedTrack?.latLng() != null -> CameraPosition.fromLatLngZoom(focusedTrack.latLng()!!, 16f)
-            points.isNotEmpty() -> CameraPosition.fromLatLngZoom(points.first(), 12f)
-            else -> CameraPosition.fromLatLngZoom(LatLng(0.0, 0.0), 1f)
+    LaunchedEffect(focusedTrack) {
+        focusedTrack?.latLng()?.let { latLng ->
+            cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(latLng, 16f))
         }
     }
 
@@ -629,11 +634,11 @@ fun LocationMapSection(
         }
 
         // Show dialog for last 10 locations if marker selected
-        if (showDialog && selectedPoint != null && last10Locations.size >= 2) {
+        if (showDialog && selectedClusterIndex != null && last10Locations.size >= 2) {
             Dialog(onDismissRequest = { showDialog = false }) {
                 Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surface) {
                     Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Open last 10 locations in Google Maps?", style = MaterialTheme.typography.titleMedium)
+                        Text("Open last ${last10Locations.size} locations in Google Maps?", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(16.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             Button(onClick = { showDialog = false }) {
@@ -641,7 +646,7 @@ fun LocationMapSection(
                             }
                             Button(onClick = {
                                 showDialog = false
-                                openLast10InGoogleMaps()
+                                openInGoogleMaps(context, last10Locations)
                             }) {
                                 Text("Open in Google Maps")
                             }
@@ -680,13 +685,20 @@ fun LocationMapSection(
             }
 
             clustered.forEachIndexed { idx, cluster ->
+                val isFocused = focusedTrack?.latLng() == cluster.latLng
                 val iconBitmap = try {
-                    BitmapDescriptorFactory.fromBitmap(createNumberedMarkerIcon(context, idx + 1))
+                    if (isFocused) {
+                        // Focused marker: use a different color or icon
+                        BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)
+                    } else {
+                        BitmapDescriptorFactory.fromBitmap(createNumberedMarkerIcon(context, idx + 1))
+                    }
                 } catch (e: Exception) {
                     BitmapDescriptorFactory.defaultMarker(
-                        when (idx) {
-                            0 -> BitmapDescriptorFactory.HUE_GREEN
-                            clustered.lastIndex -> BitmapDescriptorFactory.HUE_RED
+                        when {
+                            isFocused -> BitmapDescriptorFactory.HUE_ORANGE
+                            idx == 0 -> BitmapDescriptorFactory.HUE_GREEN
+                            idx == clustered.lastIndex -> BitmapDescriptorFactory.HUE_RED
                             else -> BitmapDescriptorFactory.HUE_AZURE
                         }
                     )
@@ -698,8 +710,11 @@ fun LocationMapSection(
                     snippet = "Visited ${cluster.count} times.",
                     icon = iconBitmap,
                     onClick = {
-                        selectedPoint = cluster
-                        getLast10Locations(cluster)
+                        // Get last 10 locations up to and including this marker
+                        val upToIndex = idx
+                        val last10 = clustered.take(upToIndex + 1).takeLast(10).map { it.latLng }
+                        last10Locations = last10
+                        selectedClusterIndex = idx
                         showDialog = true
                         true
                     }
