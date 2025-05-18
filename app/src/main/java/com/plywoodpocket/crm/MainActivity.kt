@@ -108,7 +108,6 @@ fun MainScreen(activity: MainActivity) {
     val context = LocalContext.current
     val navController = rememberNavController()
     val authViewModel: AuthViewModel = viewModel(factory = com.plywoodpocket.crm.viewmodel.AuthViewModelFactory(context))
-    val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
     var showRegister by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showLocationDialog by remember { mutableStateOf(false) }
@@ -125,6 +124,16 @@ fun MainScreen(activity: MainActivity) {
         )
     )
     val isCheckedIn = attendanceViewModel.attendanceStatus == "checked_in"
+
+    // Permission launcher defined in correct scope
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions: Map<String, Boolean> ->
+        val allGranted = permissions.values.all { it }
+        if (!allGranted) {
+            showPermissionDialog = true
+        }
+    }
 
     // Check authentication state on app start and when auth state changes
     LaunchedEffect(authState) {
@@ -162,15 +171,6 @@ fun MainScreen(activity: MainActivity) {
         }
     }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions: Map<String, Boolean> ->
-        val allGranted = permissions.values.all { it }
-        if (!allGranted) {
-            showPermissionDialog = true
-        }
-    }
-
     LaunchedEffect(Unit) {
         if (!PermissionHandler.hasRequiredPermissions(context as android.app.Activity)) {
             permissionLauncher.launch(
@@ -188,7 +188,7 @@ fun MainScreen(activity: MainActivity) {
             modifier = Modifier.fillMaxSize(),
             color = Color.Transparent
         ) {
-            if (!isLoggedIn || showRegister) {
+            if (!authViewModel.isLoggedIn.value || showRegister) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -207,7 +207,7 @@ fun MainScreen(activity: MainActivity) {
                             .background(Color(0xFFFFA726))
                     ) {
                         when {
-                            !isLoggedIn && !showRegister -> {
+                            !authViewModel.isLoggedIn.value && !showRegister -> {
                                 LoginScreen(
                                     onLoginSuccess = { email, password ->
                                         authViewModel.login(email, password)
@@ -282,7 +282,6 @@ fun DashboardScreen(
     var selectedIndex by remember { mutableStateOf(2) }
     var searchQuery by remember { mutableStateOf("") }
 
-    // Add AttendanceViewModel for check-in status using factory
     val context = LocalContext.current
     val attendanceViewModel: com.plywoodpocket.crm.viewmodel.AttendanceViewModel = viewModel(
         factory = com.plywoodpocket.crm.viewmodel.AttendanceViewModelFactory(
@@ -468,7 +467,6 @@ fun GridMenu(searchQuery: String, onAttendanceClick: () -> Unit, onLeadsClick: (
         Triple("Tasks", android.R.drawable.ic_menu_manage, Color(0xFF1976D2)),
         Triple("Secondary Sales", android.R.drawable.ic_menu_send, Color(0xFF1976D2))
     )
-
     val allItems = homeItems + analyticsItems + performanceItems
     val filteredItems = if (searchQuery.isBlank()) null else allItems.filter { it.first.contains(searchQuery, ignoreCase = true) }
 
