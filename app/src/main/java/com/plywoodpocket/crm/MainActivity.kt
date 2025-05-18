@@ -114,6 +114,7 @@ fun MainScreen(activity: MainActivity) {
     var showAttendanceScreen by remember { mutableStateOf(false) }
     var showLeadsScreen by remember { mutableStateOf(false) }
     val authState by authViewModel.authState.collectAsState()
+    val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
 
     // Add AttendanceViewModel for check-in status using factory
     val attendanceViewModel: com.plywoodpocket.crm.viewmodel.AttendanceViewModel = viewModel(
@@ -188,7 +189,7 @@ fun MainScreen(activity: MainActivity) {
             modifier = Modifier.fillMaxSize(),
             color = Color.Transparent
         ) {
-            if (!authViewModel.isLoggedIn.value || showRegister) {
+            if (!isLoggedIn || showRegister) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -207,7 +208,7 @@ fun MainScreen(activity: MainActivity) {
                             .background(Color(0xFFFFA726))
                     ) {
                         when {
-                            !authViewModel.isLoggedIn.value && !showRegister -> {
+                            !isLoggedIn && !showRegister -> {
                                 LoginScreen(
                                     onLoginSuccess = { email, password ->
                                         authViewModel.login(email, password)
