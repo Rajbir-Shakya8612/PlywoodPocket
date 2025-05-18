@@ -315,7 +315,13 @@ fun DashboardScreen(
             ) {
                 TabRowSection(selectedTab) { selectedTab = it }
                 Spacer(modifier = Modifier.height(16.dp))
-                GridMenu(searchQuery, onAttendanceClick, onLeadsClick, onPlansClick)
+                // Pass only navigation logic to GridMenu
+                GridMenu(
+                    searchQuery = searchQuery,
+                    onAttendanceClick = { navController.navigate("attendance") },
+                    onLeadsClick = { navController.navigate("leads") },
+                    onPlansClick = { navController.navigate("plans") }
+                )
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }

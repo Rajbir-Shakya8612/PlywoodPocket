@@ -715,12 +715,9 @@ fun FollowUpDetailScreen(leadId: Int, navController: NavController) {
 
                                                 if (response.isSuccessful) {
                                                     Toast.makeText(context, "Follow-up scheduled successfully", Toast.LENGTH_SHORT).show()
-                                                    // Navigate back to dashboard after a short delay
-                                                    scope.launch {
-                                                        kotlinx.coroutines.delay(1000) // Wait for 1 second to show the toast
-                                                        navController.navigate("dashboard") {
-                                                            popUpTo("dashboard") { inclusive = true }
-                                                        }
+                                                    // Navigate back to dashboard instantly (no delay)
+                                                    navController.navigate("dashboard") {
+                                                        popUpTo("dashboard") { inclusive = true }
                                                     }
                                                 } else {
                                                     Toast.makeText(
