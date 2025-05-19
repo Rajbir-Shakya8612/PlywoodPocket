@@ -203,4 +203,9 @@ interface ApiService {
     @GET("/api/salesperson/plans/yearly")
     suspend fun getYearlyPlans(): Response<com.plywoodpocket.crm.models.PlanResponse>
 
+    // Banner API
+    @Headers("Accept: application/json")
+    @GET("api/admin/banners")
+    suspend fun getBanners(): Response<BannerResponse>
+
 } 

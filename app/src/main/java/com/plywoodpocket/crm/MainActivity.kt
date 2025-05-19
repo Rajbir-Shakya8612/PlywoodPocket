@@ -50,6 +50,31 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import coil.compose.AsyncImage
+import androidx.compose.material.icons.filled.Download
+import android.app.DownloadManager
+import android.content.Context
+import android.net.Uri
+import android.os.Environment
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import com.plywoodpocket.crm.models.Banner
+import com.plywoodpocket.crm.models.BannerResponse
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.unit.Dp
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -293,14 +318,38 @@ fun DashboardScreen(
     )
     val isCheckedIn = attendanceViewModel.attendanceStatus == "checked_in"
 
+    // BannerViewModel instance
+    val bannerViewModel: BannerViewModel = viewModel(
+        factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val apiService = com.plywoodpocket.crm.api.ApiClient(com.plywoodpocket.crm.utils.TokenManager(context)).apiService
+                @Suppress("UNCHECKED_CAST")
+                return BannerViewModel(apiService) as T
+            }
+        }
+    )
+    val banners = bannerViewModel.banners
+    val isLoading = bannerViewModel.isLoading
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
             Spacer(modifier = Modifier.height(36.dp))
             SearchBar(query = searchQuery, onQueryChange = { searchQuery = it })
-            Spacer(modifier = Modifier.height(24.dp))
-            BankCard()
+            Spacer(modifier = Modifier.height(8.dp))
+            if (isLoading) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(176.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (banners.isNotEmpty()) {
+                BannerCarousel(banners, context)
+            }
             Spacer(modifier = Modifier.height(24.dp))
             InfiniteCardView()
             Spacer(modifier = Modifier.height(16.dp))
@@ -389,33 +438,98 @@ fun SearchBar(
 }
 
 @Composable
-fun BankCard() {
+fun BannerCarousel(banners: List<Banner>, context: Context) {
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+    val cardWidth = 360.dp
+    val cardHeight = 200.dp
+    val cardSpacing = 20.dp
+    val indicatorBackground = Orange
+    val indicatorDotColor = Color.White
+    val indicatorDotSize = 7.dp
+    val indicatorDotSelectedSize = 11.dp
+    val indicatorHeight = 24.dp
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        LazyRow(
+            state = listState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(cardHeight + 20.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(cardSpacing)
+        ) {
+            items(banners.size) { index ->
+                BannerCard(
+                    imageUrl = banners[index].image_url,
+                    onDownload = { downloadImage(context, banners[index].image_url) },
+                    width = cardWidth,
+                    height = cardHeight
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        if (banners.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .height(indicatorHeight)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(indicatorBackground)
+                    .padding(horizontal = 12.dp, vertical = 0.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.height(indicatorHeight)
+                ) {
+                    val currentIndex = listState.firstVisibleItemIndex
+                    for (i in banners.indices) {
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 3.dp)
+                                .size(if (i == currentIndex) indicatorDotSelectedSize else indicatorDotSize)
+                                .clip(CircleShape)
+                                .background(indicatorDotColor)
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+fun BannerCard(imageUrl: String, onDownload: () -> Unit, width: Dp = 360.dp, height: Dp = 200.dp) {
     Box(
         modifier = Modifier
-            .padding(horizontal = 24.dp)
-            .fillMaxWidth()
-            .height(200.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(
-                brush = Brush.horizontalGradient(listOf(Orange, OrangeLight))
-            )
+            .width(width)
+            .height(height)
+            .clip(RoundedCornerShape(24.dp)),
+        contentAlignment = Alignment.Center
     ) {
-        Column(modifier = Modifier.padding(24.dp)) {
-            Text("ICICI Bank", color = White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Spacer(modifier = Modifier.height(12.dp))
-            Text("2300 1130 5224", color = White, fontWeight = FontWeight.Bold, fontSize = 24.sp)
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Account No.", color = White.copy(alpha = 0.8f), fontSize = 14.sp)
-                Spacer(modifier = Modifier.width(16.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(OrangeLight.copy(alpha = 0.7f))
-                        .padding(horizontal = 18.dp, vertical = 8.dp)
-                ) {
-                    Text("Show Balance", color = White, fontSize = 14.sp)
-                }
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = "Banner Image",
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(24.dp)),
+            contentScale = ContentScale.Crop
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(14.dp)
+        ) {
+            IconButton(
+                onClick = onDownload,
+                colors = IconButtonDefaults.iconButtonColors(containerColor = Orange)
+            ) {
+                Icon(Icons.Filled.Download, contentDescription = "Download", tint = Color.White)
             }
         }
     }
@@ -667,4 +781,48 @@ fun AppNavHost(
     }
 
 
+}
+
+// Banner data model
+data class Banner(
+    val id: Int,
+    val image_url: String
+)
+
+// BannerViewModel for API fetching
+class BannerViewModel(private val apiService: com.plywoodpocket.crm.api.ApiService) : ViewModel() {
+    var banners by mutableStateOf<List<Banner>>(emptyList())
+        private set
+    var isLoading by mutableStateOf(true)
+        private set
+
+    init {
+        fetchBanners()
+    }
+
+    private fun fetchBanners() {
+        viewModelScope.launch {
+            try {
+                val response = apiService.getBanners()
+                if (response.isSuccessful) {
+                    banners = response.body()?.banners ?: emptyList()
+                }
+            } catch (_: Exception) {}
+            isLoading = false
+        }
+    }
+}
+
+// Download utility function
+fun downloadImage(context: Context, imageUrl: String) {
+    val request = DownloadManager.Request(Uri.parse(imageUrl))
+        .setTitle("BannerImage")
+        .setDescription("Downloading image...")
+        .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+        .setDestinationInExternalPublicDir(Environment.DIRECTORY_PICTURES, "banner_${System.currentTimeMillis()}.jpg")
+        .setAllowedOverMetered(true)
+        .setAllowedOverRoaming(true)
+
+    val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+    downloadManager.enqueue(request)
 }
