@@ -75,6 +75,10 @@ import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.unit.Dp
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.asPaddingValues
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -335,7 +339,14 @@ fun DashboardScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            Spacer(modifier = Modifier.height(36.dp))
+            // Only status bar area black
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding().coerceAtLeast(24.dp))
+                    .background(Color.Black)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
             SearchBar(query = searchQuery, onQueryChange = { searchQuery = it })
             Spacer(modifier = Modifier.height(8.dp))
             if (isLoading) {
@@ -350,10 +361,7 @@ fun DashboardScreen(
             } else if (banners.isNotEmpty()) {
                 BannerCarousel(banners, context)
             }
-            Spacer(modifier = Modifier.height(24.dp))
-            InfiniteCardView()
-            Spacer(modifier = Modifier.height(16.dp))
-
+            Spacer(modifier = Modifier.height(8.dp))
             // SCROLLABLE SECTION
             Column(
                 modifier = Modifier
@@ -363,8 +371,7 @@ fun DashboardScreen(
                     .navigationBarsPadding()
             ) {
                 TabRowSection(selectedTab) { selectedTab = it }
-                Spacer(modifier = Modifier.height(16.dp))
-                // Pass only navigation logic to GridMenu
+                Spacer(modifier = Modifier.height(8.dp))
                 GridMenu(
                     searchQuery = searchQuery,
                     onAttendanceClick = { navController.navigate("attendance") },
