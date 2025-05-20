@@ -52,7 +52,8 @@ fun AdminDashboardScreen(
             onAuditLogClick = { navController.navigate("audit_log_screen") },
             onAnalyticsClick = { navController.navigate("analytics_screen") },
             onLocationClick = { navController.navigate("admin_location_screen") },
-            onSecurityClick = { navController.navigate("security_screen") }
+            onSecurityClick = { navController.navigate("security_screen") },
+            onBannersClick = { navController.navigate("admin_banner_dashboard") }
         )
         Spacer(modifier = Modifier.weight(1f))
         BottomNavBar(
@@ -120,7 +121,8 @@ fun AdminGridMenu(
     onAuditLogClick: () -> Unit,
     onAnalyticsClick: () -> Unit,
     onLocationClick: () -> Unit,
-    onSecurityClick: () -> Unit
+    onSecurityClick: () -> Unit,
+    onBannersClick: () -> Unit
 ) {
     val adminItems = listOf(
         Triple("Users", android.R.drawable.ic_menu_manage, Color(0xFF1976D2)) to onUsersClick,
@@ -132,43 +134,34 @@ fun AdminGridMenu(
         Triple("Analytics", android.R.drawable.ic_menu_sort_by_size, Color(0xFF1976D2)) to onAnalyticsClick,
         Triple("Location", android.R.drawable.ic_menu_save, Color(0xFF1976D2)) to onLocationClick,
         Triple("Security", android.R.drawable.ic_menu_camera, Color(0xFF1976D2)) to onSecurityClick,
+        Triple("Banners", android.R.drawable.ic_menu_gallery, Color(0xFF1976D2)) to onBannersClick
     )
     val filteredItems = if (searchQuery.isBlank()) null else adminItems.filter { it.first.first.contains(searchQuery, ignoreCase = true) }
 
-    if (filteredItems == null) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Column(
-                modifier = Modifier.width(100.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+    val itemsToShow = filteredItems ?: adminItems
+    val chunked = itemsToShow.chunked(3)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        chunked.forEach { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                adminItems.take(3).forEach { (item, onClick) ->
+                rowItems.forEach { (item, onClick) ->
                     MenuItem(item.first, item.second, item.third, onClick = onClick)
                 }
-            }
-            Column(
-                modifier = Modifier.width(100.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                adminItems.drop(3).take(3).forEach { (item, onClick) ->
-                    MenuItem(item.first, item.second, item.third, onClick = onClick)
-                }
-            }
-            Column(
-                modifier = Modifier.width(100.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                adminItems.drop(6).forEach { (item, onClick) ->
-                    MenuItem(item.first, item.second, item.third, onClick = onClick)
+                // Fill empty columns if not enough items in the last row
+                repeat(3 - rowItems.size) {
+                    Spacer(modifier = Modifier.width(90.dp))
                 }
             }
         }
-    } else {
-        if (filteredItems.isEmpty()) {
+        if (filteredItems != null && filteredItems.isEmpty()) {
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -176,17 +169,6 @@ fun AdminGridMenu(
                 contentAlignment = Alignment.Center
             ) {
                 Text("No results found", color = Gray)
-            }
-        } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                filteredItems.forEach { (item, onClick) ->
-                    MenuItem(item.first, item.second, item.third, onClick = onClick)
-                }
             }
         }
     }

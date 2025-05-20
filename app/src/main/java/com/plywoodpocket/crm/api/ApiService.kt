@@ -5,6 +5,9 @@ import com.plywoodpocket.crm.models.LoginResponse
 import com.plywoodpocket.crm.models.*
 import retrofit2.Response
 import retrofit2.http.*
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.ResponseBody
 
 interface ApiService {
     @Headers("Accept: application/json")
@@ -207,5 +210,33 @@ interface ApiService {
     @Headers("Accept: application/json")
     @GET("api/admin/banners")
     suspend fun getBanners(): Response<BannerResponse>
+
+    @Headers("Accept: application/json")
+    @Multipart
+    @POST("api/admin/banners")
+    suspend fun createBanner(
+        @Part title: MultipartBody.Part,
+        @Part image: MultipartBody.Part,
+        @Part("link") link: RequestBody?,
+        @Part("is_active") isActive: RequestBody,
+        @Part("order") order: RequestBody
+    ): Response<Banner>
+
+    @Headers("Accept: application/json")
+    @Multipart
+    @POST("api/admin/banners/{id}")
+    suspend fun updateBanner(
+        @Path("id") id: Int,
+        @Part("_method") method: RequestBody,
+        @Part title: MultipartBody.Part,
+        @Part image: MultipartBody.Part?,
+        @Part("link") link: RequestBody?,
+        @Part("is_active") isActive: RequestBody,
+        @Part("order") order: RequestBody
+    ): Response<Banner>
+
+    @Headers("Accept: application/json")
+    @DELETE("api/admin/banners/{id}")
+    suspend fun deleteBanner(@Path("id") id: Int): Response<Banner>
 
 } 

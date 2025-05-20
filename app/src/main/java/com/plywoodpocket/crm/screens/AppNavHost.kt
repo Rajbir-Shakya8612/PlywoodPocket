@@ -23,6 +23,7 @@ import com.plywoodpocket.crm.DashboardScreen
 import com.plywoodpocket.crm.screens.admin.UserManagementScreen
 import com.plywoodpocket.crm.screens.admin.AdminDashboardScreen
 import com.plywoodpocket.crm.screens.admin.AdminLocationScreen
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun AppNavHost(
@@ -207,6 +208,21 @@ fun AppNavHost(
 
         composable("plans") {
             PlansScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable("admin_banner_dashboard") {
+            val context = LocalContext.current
+            val apiService = remember { com.plywoodpocket.crm.api.ApiClient(com.plywoodpocket.crm.utils.TokenManager(context)).apiService }
+            val viewModel: com.plywoodpocket.crm.viewmodel.BannerAdminViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    @Suppress("UNCHECKED_CAST")
+                    return com.plywoodpocket.crm.viewmodel.BannerAdminViewModel(apiService) as T
+                }
+            })
+            com.plywoodpocket.crm.screens.admin.AdminBannerDashboardScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() }
+            )
         }
     }
 } 
