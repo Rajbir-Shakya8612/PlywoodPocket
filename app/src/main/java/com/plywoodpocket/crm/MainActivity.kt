@@ -79,6 +79,9 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.asPaddingValues
+import android.content.Intent
+import android.os.Build
+import com.plywoodpocket.crm.utils.LocationTrackingService
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -162,6 +165,11 @@ fun MainScreen(activity: MainActivity) {
         val allGranted = permissions.values.all { it }
         if (!allGranted) {
             showPermissionDialog = true
+        } else {
+            // Check location services after permissions are granted
+            if (!LocationServiceHelper.isLocationEnabled(context)) {
+                showLocationDialog = true
+            }
         }
     }
 
@@ -175,7 +183,19 @@ fun MainScreen(activity: MainActivity) {
                         showRegister = false
                     }
                     msg.contains("Login successful", ignoreCase = true) -> {
-                        // Navigation will be handled in AppNavHost based on role
+                        // Check permissions after successful login
+                        if (!PermissionHandler.hasRequiredPermissions(context)) {
+                            permissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    Manifest.permission.ACCESS_BACKGROUND_LOCATION,
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                )
+                            )
+                        } else if (!LocationServiceHelper.isLocationEnabled(context)) {
+                            showLocationDialog = true
+                        }
                     }
                 }
             }
@@ -201,15 +221,34 @@ fun MainScreen(activity: MainActivity) {
         }
     }
 
+    // Check permissions on app start
     LaunchedEffect(Unit) {
-        if (!PermissionHandler.hasRequiredPermissions(context as android.app.Activity)) {
+        if (!PermissionHandler.hasRequiredPermissions(context)) {
             permissionLauncher.launch(
                 arrayOf(
                     Manifest.permission.ACCESS_FINE_LOCATION,
                     Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.ACCESS_BACKGROUND_LOCATION,
                     Manifest.permission.POST_NOTIFICATIONS
                 )
             )
+        }
+    }
+
+    // Handle check-in status changes
+    LaunchedEffect(isCheckedIn) {
+        if (isCheckedIn) {
+            // Start location tracking service when checked in
+            val intent = Intent(context, LocationTrackingService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        } else {
+            // Stop location tracking service when checked out
+            context.stopService(Intent(context, LocationTrackingService::class.java))
+            WorkManagerScheduler.stopLocationTracking(context)
         }
     }
 
