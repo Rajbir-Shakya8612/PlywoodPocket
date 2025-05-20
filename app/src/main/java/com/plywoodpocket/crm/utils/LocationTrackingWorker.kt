@@ -2,6 +2,8 @@ package com.plywoodpocket.crm.utils
 
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.plywoodpocket.crm.api.ApiClient
@@ -9,28 +11,45 @@ import com.plywoodpocket.crm.models.LocationData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.util.Log
+import java.util.concurrent.ConcurrentLinkedQueue
 
 class LocationTrackingWorker(appContext: Context, workerParams: WorkerParameters) : CoroutineWorker(appContext, workerParams) {
 
     private val apiClient = ApiClient(TokenManager(appContext)).apiService
     private val TAG = "LocationTrackingWorker"
+    
+    companion object {
+        // Queue to store offline locations
+        private val offlineLocationQueue = ConcurrentLinkedQueue<LocationData>()
+        
+        // Flag to track if sync is in progress
+        private var isSyncing = false
+    }
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "Starting location tracking work")
             
             // First check if user is still checked in
-            val statusResponse = apiClient.getAttendanceStatus()
-            if (!statusResponse.isSuccessful) {
-                Log.e(TAG, "Failed to get attendance status: ${statusResponse.code()}")
-                return@withContext Result.retry()
+            val statusResponse = if (isNetworkAvailable(applicationContext)) {
+                apiClient.getAttendanceStatus()
+            } else {
+                Log.d(TAG, "Network unavailable, using cached status")
+                null
             }
 
-            val canCheckOut = statusResponse.body()?.canCheckOut ?: false
-            if (!canCheckOut) {
-                Log.d(TAG, "User is not checked in, stopping location service")
-                stopLocationService()
-                return@withContext Result.success()
+            if (statusResponse != null) {
+                if (!statusResponse.isSuccessful) {
+                    Log.e(TAG, "Failed to get attendance status: ${statusResponse.code()}")
+                    return@withContext Result.retry()
+                }
+
+                val canCheckOut = statusResponse.body()?.canCheckOut ?: false
+                if (!canCheckOut) {
+                    Log.d(TAG, "User is not checked in, stopping location service")
+                    stopLocationService()
+                    return@withContext Result.success()
+                }
             }
 
             // Start the foreground service if not already running
@@ -61,13 +80,28 @@ class LocationTrackingWorker(appContext: Context, workerParams: WorkerParameters
                 LocationCache.saveLastLocation(applicationContext, 
                     SimpleLocation(location.latitude, location.longitude, System.currentTimeMillis()))
 
-                val response = apiClient.trackLocation(locationData)
-                if (response.isSuccessful) {
-                    Log.d(TAG, "Successfully tracked location")
-                    return@withContext Result.success()
+                if (isNetworkAvailable(applicationContext)) {
+                    // Try to sync any offline locations first
+                    syncOfflineLocations()
+                    
+                    // Send current location
+                    val response = apiClient.trackLocation(locationData)
+                    if (response.isSuccessful) {
+                        Log.d(TAG, "Successfully tracked location")
+                        return@withContext Result.success()
+                    } else {
+                        Log.e(TAG, "Failed to track location: ${response.code()}")
+                        // Add to offline queue if network request fails
+                        offlineLocationQueue.add(locationData)
+                        LocationCache.saveOfflineLocation(applicationContext, locationData)
+                        return@withContext Result.retry()
+                    }
                 } else {
-                    Log.e(TAG, "Failed to track location: ${response.code()}")
-                    return@withContext Result.retry()
+                    // Network is offline, store location for later sync
+                    Log.d(TAG, "Network offline, caching location")
+                    offlineLocationQueue.add(locationData)
+                    LocationCache.saveOfflineLocation(applicationContext, locationData)
+                    return@withContext Result.success()
                 }
             } else {
                 Log.e(TAG, "Failed to get location after retries")
@@ -77,6 +111,42 @@ class LocationTrackingWorker(appContext: Context, workerParams: WorkerParameters
             Log.e(TAG, "Error in location tracking: ${e.message}", e)
             return@withContext Result.retry()
         }
+    }
+
+    private suspend fun syncOfflineLocations() {
+        if (isSyncing) return
+        isSyncing = true
+        
+        try {
+            val offlineLocations = LocationCache.getOfflineLocations(applicationContext)
+            Log.d(TAG, "Syncing ${offlineLocations.size} offline locations")
+            
+            for (locationData in offlineLocations) {
+                try {
+                    val response = apiClient.trackLocation(locationData)
+                    if (response.isSuccessful) {
+                        // Remove from queue and cache after successful sync
+                        offlineLocationQueue.remove(locationData)
+                        LocationCache.removeOfflineLocation(applicationContext, locationData)
+                    } else {
+                        Log.e(TAG, "Failed to sync offline location: ${response.code()}")
+                        break // Stop syncing if we hit an error
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error syncing offline location: ${e.message}")
+                    break
+                }
+            }
+        } finally {
+            isSyncing = false
+        }
+    }
+
+    private fun isNetworkAvailable(context: Context): Boolean {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     private fun startLocationService() {
