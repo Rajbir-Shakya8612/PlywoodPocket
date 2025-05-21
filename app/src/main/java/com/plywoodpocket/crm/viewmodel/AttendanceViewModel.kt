@@ -95,7 +95,7 @@ class AttendanceViewModel(
 
             // Timeout for location fetch (5 seconds)
             val location = try {
-                kotlinx.coroutines.withTimeout(5000) {
+                kotlinx.coroutines.withTimeout(10000) {
                     LocationHelper.getCurrentLocation(context)
                 }
             } catch (e: Exception) {
