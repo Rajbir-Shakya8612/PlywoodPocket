@@ -33,6 +33,7 @@ class AttendanceViewModel(
     var status by mutableStateOf<String?>(null)
     var errorMessage by mutableStateOf<String?>(null)
     var showLocationDialog by mutableStateOf(false)
+    var showNetworkDialog by mutableStateOf(false)
 
     init {
         fetchAttendanceStatus()
@@ -79,35 +80,51 @@ class AttendanceViewModel(
         loading = true
         errorMessage = null
         try {
+            if (!com.plywoodpocket.crm.utils.LocationServiceHelper.isNetworkAvailable(context)) {
+                showNetworkDialog = true
+                loading = false
+                return@launch
+            }
             if (!LocationServiceHelper.isLocationEnabled(context)) {
                 showLocationDialog = true
                 loading = false
                 return@launch
             }
 
-            val location = LocationHelper.getCurrentLocation(context)
+            // Timeout for location fetch (5 seconds)
+            val location = try {
+                kotlinx.coroutines.withTimeout(5000) {
+                    LocationHelper.getCurrentLocation(context)
+                }
+            } catch (e: Exception) {
+                null
+            }
             if (location != null) {
                 Log.d("AttendanceViewModel", "Location received: ${location.latitude}, ${location.longitude}")
-                
                 val address = LocationHelper.reverseGeocode(context, location.latitude, location.longitude)
                 Log.d("AttendanceViewModel", "Address: $address")
-
-                // Create location JSON object
                 val locationData = mapOf(
                     "latitude" to location.latitude,
                     "longitude" to location.longitude,
                     "accuracy" to location.accuracy
                 )
                 val locationJson = Gson().toJson(locationData)
-
                 val request = CheckInRequest(check_in_location = locationJson)
-                val response = api.checkIn(request)
-                Log.d("AttendanceViewModel", "Check-in response: ${response.isSuccessful}")
-
-                if (response.isSuccessful) {
+                // Timeout for API call (5 seconds)
+                val response = try {
+                    kotlinx.coroutines.withTimeout(5000) {
+                        api.checkIn(request)
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+                if (response != null && response.isSuccessful) {
                     attendanceStatus = "checked_in"
                     startLocationTracking(context)
                     fetchAttendanceStatus() // Refresh status after check-in
+                } else if (response == null) {
+                    errorMessage = "Network is too slow. Please try again."
+                    attendanceStatus = "none"
                 } else {
                     val errorBody = response.errorBody()?.string()
                     if (response.code() == 401 || errorBody?.contains("Unauthenticated", ignoreCase = true) == true) {
@@ -135,35 +152,50 @@ class AttendanceViewModel(
         loading = true
         errorMessage = null
         try {
+            if (!com.plywoodpocket.crm.utils.LocationServiceHelper.isNetworkAvailable(context)) {
+                showNetworkDialog = true
+                loading = false
+                return@launch
+            }
             if (!LocationServiceHelper.isLocationEnabled(context)) {
                 showLocationDialog = true
                 loading = false
                 return@launch
             }
-
-            val location = LocationHelper.getCurrentLocation(context)
+            // Timeout for location fetch (5 seconds)
+            val location = try {
+                kotlinx.coroutines.withTimeout(5000) {
+                    LocationHelper.getCurrentLocation(context)
+                }
+            } catch (e: Exception) {
+                null
+            }
             if (location != null) {
                 Log.d("AttendanceViewModel", "Location received for check-out: ${location.latitude}, ${location.longitude}")
-                
                 val address = LocationHelper.reverseGeocode(context, location.latitude, location.longitude)
                 Log.d("AttendanceViewModel", "Check-out address: $address")
-
-                // Create location JSON object
                 val locationData = mapOf(
                     "latitude" to location.latitude,
                     "longitude" to location.longitude,
                     "accuracy" to location.accuracy
                 )
                 val locationJson = Gson().toJson(locationData)
-
                 val request = CheckOutRequest(check_out_location = locationJson)
-                val response = api.checkOut(request)
-                Log.d("AttendanceViewModel", "Check-out response: ${response.isSuccessful}")
-
-                if (response.isSuccessful) {
+                // Timeout for API call (5 seconds)
+                val response = try {
+                    kotlinx.coroutines.withTimeout(5000) {
+                        api.checkOut(request)
+                    }
+                } catch (e: Exception) {
+                    null
+                }
+                if (response != null && response.isSuccessful) {
                     attendanceStatus = "checked_out"
                     stopLocationTracking(context)
                     fetchAttendanceStatus() // Refresh status after check-out
+                } else if (response == null) {
+                    errorMessage = "Network is too slow. Please try again."
+                    attendanceStatus = "checked_in"
                 } else {
                     val errorBody = response.errorBody()?.string()
                     if (response.code() == 401 || errorBody?.contains("Unauthenticated", ignoreCase = true) == true) {

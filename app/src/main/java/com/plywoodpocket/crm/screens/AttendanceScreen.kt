@@ -45,6 +45,17 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
             }
         )
     }
+    if (viewModel.showNetworkDialog) {
+        LocationServiceHelper.NetworkErrorDialog(
+            onDismiss = { viewModel.showNetworkDialog = false },
+            onSettingsClick = {
+                val intent = android.content.Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS)
+                intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                context.startActivity(intent)
+                viewModel.showNetworkDialog = false
+            }
+        )
+    }
 
     BackHandler {
         onBack()
