@@ -42,6 +42,7 @@ class ApiClient(private val tokenManager: TokenManager) {
 
     private val gson = GsonBuilder()
         .setLenient()
+        .serializeNulls()
         .create()
 
     private val retrofit = Retrofit.Builder()

@@ -224,5 +224,12 @@ fun AppNavHost(
                 onBack = { navController.popBackStack() }
             )
         }
+
+        composable("admin_leads_screen") {
+            com.plywoodpocket.crm.screens.admin.AdminLeadsScreen(
+                onBack = { navController.popBackStack() },
+                navController = navController
+            )
+        }
     }
 } 

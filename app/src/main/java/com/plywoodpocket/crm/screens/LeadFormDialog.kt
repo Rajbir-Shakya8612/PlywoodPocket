@@ -54,6 +54,7 @@ fun LeadFormDialog(
     var locationStr by remember { mutableStateOf(lead?.location ?: "") }
     var loadingLocation by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
+    var company by remember { mutableStateOf(TextFieldValue(lead?.company ?: "")) }
     val selectedStatus = statuses.find { it.id == statusId }
 
     fun fetchLocation(context: Context) {
@@ -145,6 +146,7 @@ fun LeadFormDialog(
                 )
                 OutlinedTextField(value = notes, onValueChange = { notes = it }, label = { Text("Notes") }, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = company, onValueChange = { company = it }, label = { Text("Company") }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Location: "+ if (loadingLocation) "Fetching..." else locationStr, modifier = Modifier.weight(1f))
@@ -172,7 +174,7 @@ fun LeadFormDialog(
                         longitude = longitude,
                         location = locationStr,
                         pincode = null,
-                        company = null,
+                        company = company.text.ifBlank { null },
                         additional_info = null,
                         source = null,
                         expected_amount = null

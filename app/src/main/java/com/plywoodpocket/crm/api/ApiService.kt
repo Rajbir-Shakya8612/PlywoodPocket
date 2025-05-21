@@ -239,4 +239,45 @@ interface ApiService {
     @DELETE("api/admin/banners/{id}")
     suspend fun deleteBanner(@Path("id") id: Int): Response<Banner>
 
+    // Admin Leads API
+    @Headers("Accept: application/json")
+    @GET("api/admin/leads")
+    suspend fun getAdminLeads(): Response<LeadsResponse>
+
+    @Headers("Accept: application/json")
+    @POST("api/admin/leads")
+    suspend fun createAdminLead(@Body request: LeadRequest): Response<LeadResponse>
+
+    @Headers("Accept: application/json")
+    @GET("api/admin/leads/{lead}")
+    suspend fun getAdminLead(@Path("lead") leadId: Int): Response<LeadResponse>
+
+    @Headers("Accept: application/json")
+    @PUT("api/admin/leads/{lead}")
+    suspend fun updateAdminLead(@Path("lead") leadId: Int, @Body request: LeadRequest): Response<LeadResponse>
+
+    @Headers("Accept: application/json")
+    @DELETE("api/admin/leads/{lead}")
+    suspend fun deleteAdminLead(@Path("lead") leadId: Int): Response<Any>
+
+    @Headers("Accept: application/json")
+    @PUT("api/admin/leads/{lead}/status")
+    suspend fun updateAdminLeadStatus(@Path("lead") leadId: Int, @Body request: UpdateStatusRequest): Response<LeadResponse>
+
+    @Headers("Accept: application/json")
+    @POST("api/admin/leads/{lead}/follow-up")
+    suspend fun scheduleAdminFollowUp(@Path("lead") leadId: Int, @Body request: FollowUpRequest): Response<Any>
+
+    @Headers("Accept: application/json")
+    @GET("api/admin/leads/status/{status}")
+    suspend fun getAdminLeadsByStatus(@Path("status") status: Int): Response<LeadsResponse>
+
+    @Headers("Accept: application/json")
+    @GET("api/admin/leads/stats")
+    suspend fun getAdminLeadStats(): Response<LeadStatsResponse>
+
+    @Headers("Accept: application/json")
+    @GET("api/admin/leads/export")
+    suspend fun exportAdminLeads(): Response<ResponseBody>
+
 } 

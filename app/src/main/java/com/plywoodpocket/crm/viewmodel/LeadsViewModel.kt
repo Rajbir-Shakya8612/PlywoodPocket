@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import com.plywoodpocket.crm.utils.TokenManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.google.gson.JsonSyntaxException
 
 sealed class LeadsUiState {
     object Loading : LeadsUiState()
@@ -35,9 +36,10 @@ class LeadsViewModel(app: Application, tokenManager: TokenManager) : AndroidView
                 if (response.isSuccessful) {
                     val body = response.body()
                     if (body != null) {
+                        val statuses = body.leadStatuses ?: body.lead_statuses ?: emptyList()
                         _uiState.value = LeadsUiState.Success(
                             leads = body.leads,
-                            statuses = body.lead_statuses
+                            statuses = statuses
                         )
                     } else {
                         _uiState.value = LeadsUiState.Error("No data found")
@@ -111,6 +113,107 @@ class LeadsViewModelFactory(private val app: Application) : ViewModelProvider.Fa
             val tokenManager = TokenManager(app.applicationContext)
             @Suppress("UNCHECKED_CAST")
             return LeadsViewModel(app, tokenManager) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+
+class AdminLeadsViewModel(app: Application, tokenManager: TokenManager) : AndroidViewModel(app) {
+    private val api: ApiService = ApiClient(tokenManager).apiService
+    private val _uiState = MutableStateFlow<LeadsUiState>(LeadsUiState.Loading)
+    val uiState: StateFlow<LeadsUiState> = _uiState
+
+    var selectedStatusId: Int? = null
+        private set
+
+    fun loadLeads(statusId: Int? = null) {
+        viewModelScope.launch {
+            _uiState.value = LeadsUiState.Loading
+            try {
+                val response = if (statusId == null) api.getAdminLeads() else api.getAdminLeadsByStatus(statusId)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    if (body != null) {
+                        val statuses = body.leadStatuses ?: body.lead_statuses ?: emptyList()
+                        _uiState.value = LeadsUiState.Success(
+                            leads = body.leads,
+                            statuses = statuses
+                        )
+                    } else {
+                        _uiState.value = LeadsUiState.Error("No data found")
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    _uiState.value = LeadsUiState.Error("API error: ${response.message()}\nRaw: $errorBody")
+                }
+            } catch (e: JsonSyntaxException) {
+                _uiState.value = LeadsUiState.Error("Parsing error: ${e.localizedMessage}\nPossible cause: Backend did not return JSON object. Please check API response or login as admin.")
+            } catch (e: Exception) {
+                _uiState.value = LeadsUiState.Error(e.localizedMessage ?: "Unknown error")
+            }
+        }
+    }
+
+    fun createLead(request: LeadRequest, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val response = api.createAdminLead(request)
+                if (response.isSuccessful && response.body()?.success == true) {
+                    onResult(true, response.body()?.message ?: "Lead created")
+                    loadLeads(selectedStatusId)
+                } else {
+                    onResult(false, response.body()?.message ?: response.message())
+                }
+            } catch (e: Exception) {
+                onResult(false, e.localizedMessage ?: "Unknown error")
+            }
+        }
+    }
+
+    fun updateLead(leadId: Int, request: LeadRequest, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val response = api.updateAdminLead(leadId, request)
+                if (response.isSuccessful && response.body()?.success == true) {
+                    onResult(true, response.body()?.message ?: "Lead updated")
+                    loadLeads(selectedStatusId)
+                } else {
+                    onResult(false, response.body()?.message ?: response.message())
+                }
+            } catch (e: Exception) {
+                onResult(false, e.localizedMessage ?: "Unknown error")
+            }
+        }
+    }
+
+    fun deleteLead(leadId: Int, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val response = api.deleteAdminLead(leadId)
+                if (response.isSuccessful) {
+                    onResult(true, "Lead deleted")
+                    loadLeads(selectedStatusId)
+                } else {
+                    onResult(false, response.message())
+                }
+            } catch (e: Exception) {
+                onResult(false, e.localizedMessage ?: "Unknown error")
+            }
+        }
+    }
+
+    fun selectStatus(statusId: Int?) {
+        selectedStatusId = statusId
+        loadLeads(statusId)
+    }
+}
+
+class AdminLeadsViewModelFactory(private val app: Application) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(AdminLeadsViewModel::class.java)) {
+            val tokenManager = TokenManager(app.applicationContext)
+            @Suppress("UNCHECKED_CAST")
+            return AdminLeadsViewModel(app, tokenManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

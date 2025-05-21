@@ -33,9 +33,14 @@ data class LeadStatus(
 )
 
 data class LeadsResponse(
-    val lead_statuses: List<LeadStatus>,
-    val leads: List<Lead>,
-    val chart_data: List<LeadChartData>?
+    @SerializedName("lead_statuses")
+    val lead_statuses: List<LeadStatus>? = null,
+    @SerializedName("leadStatuses")
+    val leadStatuses: List<LeadStatus>? = null,
+    @SerializedName("leads")
+    val leads: List<Lead> = emptyList(),
+    @SerializedName("chart_data")
+    val chart_data: List<LeadChartData>? = null
 )
 
 data class LeadChartData(
