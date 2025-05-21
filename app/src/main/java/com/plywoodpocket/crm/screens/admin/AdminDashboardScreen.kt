@@ -34,6 +34,13 @@ fun AdminDashboardScreen(
             .fillMaxSize()
             .background(White)
     ) {
+        // Top bar/status bar area
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding().coerceAtLeast(24.dp))
+                .background(Color.Black)
+        )
         Spacer(modifier = Modifier.height(36.dp))
         SearchBar(
             query = searchQuery,
@@ -137,7 +144,7 @@ fun AdminGridMenu(
         Triple("Location", android.R.drawable.ic_menu_save, Color(0xFF1976D2)) to onLocationClick,
         Triple("Security", android.R.drawable.ic_menu_camera, Color(0xFF1976D2)) to onSecurityClick,
         Triple("Banners", android.R.drawable.ic_menu_gallery, Color(0xFF1976D2)) to onBannersClick,
-        Triple("Leads", android.R.drawable.ic_menu_agenda, Color.Red) to onLeadsClick
+        Triple("Leads", android.R.drawable.ic_menu_agenda,  Color(0xFF1976D2)) to onLeadsClick
     )
     val filteredItems = if (searchQuery.isBlank()) null else adminItems.filter { it.first.first.contains(searchQuery, ignoreCase = true) }
 
