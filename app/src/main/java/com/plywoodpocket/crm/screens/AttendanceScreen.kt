@@ -38,10 +38,14 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
 
     if (viewModel.showLocationDialog) {
         LocationServiceHelper.LocationServiceDialog(
-            onDismiss = { viewModel.showLocationDialog = false },
+            onDismiss = {
+                viewModel.showLocationDialog = false
+                viewModel.errorMessage = null
+            },
             onSettingsClick = {
                 LocationServiceHelper.openLocationSettings(context)
                 viewModel.showLocationDialog = false
+                viewModel.errorMessage = null
             }
         )
     }
@@ -134,7 +138,9 @@ fun AttendanceScreen(viewModel: AttendanceViewModel, onBack: () -> Unit = {}) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 viewModel.errorMessage?.let {
-                    ErrorCard(it)
+                    if (!it.contains("location", ignoreCase = true)) {
+                        ErrorCard(it)
+                    }
                 }
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     StatusCard(status, viewModel, context)

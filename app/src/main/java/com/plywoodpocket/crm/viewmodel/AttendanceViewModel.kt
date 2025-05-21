@@ -87,6 +87,8 @@ class AttendanceViewModel(
             }
             if (!LocationServiceHelper.isLocationEnabled(context)) {
                 showLocationDialog = true
+                errorMessage = null
+                attendanceStatus = "none"
                 loading = false
                 return@launch
             }
@@ -137,8 +139,10 @@ class AttendanceViewModel(
                     }
                 }
             } else {
-                errorMessage = "Could not get location. Please ensure location services are enabled."
+                showLocationDialog = true
+                errorMessage = null
                 attendanceStatus = "none"
+                loading = false
             }
         } catch (e: Exception) {
             errorMessage = "Error during check-in: ${e.message}"
@@ -159,6 +163,8 @@ class AttendanceViewModel(
             }
             if (!LocationServiceHelper.isLocationEnabled(context)) {
                 showLocationDialog = true
+                errorMessage = null
+                attendanceStatus = "checked_in"
                 loading = false
                 return@launch
             }
@@ -208,8 +214,10 @@ class AttendanceViewModel(
                     }
                 }
             } else {
-                errorMessage = "Could not get location. Please ensure location services are enabled."
+                showLocationDialog = true
+                errorMessage = null
                 attendanceStatus = "checked_in"
+                loading = false
             }
         } catch (e: Exception) {
             errorMessage = "Error during check-out: ${e.message}"
