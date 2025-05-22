@@ -415,7 +415,8 @@ fun DashboardScreen(
                     searchQuery = searchQuery,
                     onAttendanceClick = { navController.navigate("attendance") },
                     onLeadsClick = { navController.navigate("leads") },
-                    onPlansClick = { navController.navigate("plans") }
+                    onPlansClick = { navController.navigate("plans") },
+                    navController = navController
                 )
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -618,7 +619,13 @@ fun TabItem(title: String, selected: Boolean, modifier: Modifier = Modifier, onC
 }
 
 @Composable
-fun GridMenu(searchQuery: String, onAttendanceClick: () -> Unit, onLeadsClick: () -> Unit, onPlansClick: () -> Unit) {
+fun GridMenu(
+    searchQuery: String,
+    onAttendanceClick: () -> Unit,
+    onLeadsClick: () -> Unit,
+    onPlansClick: () -> Unit,
+    navController: NavController
+) {
     val homeItems = listOf(
         Triple("Attendance", android.R.drawable.ic_menu_my_calendar, Color(0xFF1976D2)),
         Triple("Plans", android.R.drawable.ic_menu_compass, Color(0xFF1976D2)),
@@ -665,7 +672,13 @@ fun GridMenu(searchQuery: String, onAttendanceClick: () -> Unit, onLeadsClick: (
                 modifier = Modifier.width(100.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                performanceItems.forEach { MenuItem(it.first, it.second, it.third, onClick = {}) }
+                performanceItems.forEach {
+                    if (it.first == "Tasks") {
+                        MenuItem(it.first, it.second, it.third, onClick = { navController.navigate("tasks") })
+                    } else {
+                        MenuItem(it.first, it.second, it.third, onClick = {})
+                    }
+                }
             }
         }
     } else {

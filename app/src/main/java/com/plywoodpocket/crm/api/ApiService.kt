@@ -280,4 +280,28 @@ interface ApiService {
     @GET("api/admin/leads/export")
     suspend fun exportAdminLeads(): Response<ResponseBody>
 
+    @Headers("Accept: application/json")
+    @GET("api/salesperson/tasks")
+    suspend fun getTasks(
+        @Query("status") status: String? = null,
+        @Query("type") type: String? = null,
+        @Query("search") search: String? = null,
+        @Query("page") page: Int? = null
+    ): Response<com.plywoodpocket.crm.models.TaskListResponse>
+
+    @Headers("Accept: application/json")
+    @POST("api/salesperson/tasks")
+    suspend fun createTask(@Body request: Map<String, @JvmSuppressWildcards Any?>): Response<com.plywoodpocket.crm.models.TaskResponse>
+
+    @Headers("Accept: application/json")
+    @GET("api/salesperson/tasks/{task}")
+    suspend fun getTask(@Path("task") taskId: Int): Response<com.plywoodpocket.crm.models.TaskResponse>
+
+    @Headers("Accept: application/json")
+    @PUT("api/salesperson/tasks/{task}/status")
+    suspend fun updateTaskStatus(
+        @Path("task") taskId: Int,
+        @Body request: Map<String, String>
+    ): Response<com.plywoodpocket.crm.models.TaskResponse>
+
 } 
