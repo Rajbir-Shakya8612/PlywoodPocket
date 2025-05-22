@@ -304,4 +304,10 @@ interface ApiService {
         @Body request: Map<String, String>
     ): Response<com.plywoodpocket.crm.models.TaskResponse>
 
+    @PUT("api/salesperson/tasks/{task}")
+    suspend fun updateTask(
+        @Path("task") taskId: Int,
+        @Body request: Map<String, @JvmSuppressWildcards Any?>
+    ): Response<TaskResponse>
+
 } 

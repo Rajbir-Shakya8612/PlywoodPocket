@@ -21,4 +21,8 @@ class TaskRepository(private val apiService: ApiService) {
     suspend fun updateTaskStatus(taskId: Int, status: String): Response<TaskResponse> {
         return apiService.updateTaskStatus(taskId, mapOf("status" to status))
     }
+
+    suspend fun updateTask(taskId: Int, task: Map<String, Any?>): Response<TaskResponse> {
+        return apiService.updateTask(taskId, task)
+    }
 } 

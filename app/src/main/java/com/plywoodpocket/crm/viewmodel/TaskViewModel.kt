@@ -70,4 +70,22 @@ class TaskViewModel(private val repository: TaskRepository) : ViewModel() {
             _loading.value = false
         }
     }
+
+    fun updateTask(taskId: Int, task: Map<String, Any?>, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        _loading.value = true
+        viewModelScope.launch {
+            try {
+                val response = repository.updateTask(taskId, task)
+                if (response.isSuccessful && response.body()?.success == true) {
+                    fetchTasks()
+                    onSuccess()
+                } else {
+                    onError(response.body()?.message ?: "Failed to update task")
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Error")
+            }
+            _loading.value = false
+        }
+    }
 } 
