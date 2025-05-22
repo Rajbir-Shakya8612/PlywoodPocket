@@ -26,6 +26,7 @@ import com.plywoodpocket.crm.screens.admin.AdminLocationScreen
 import androidx.compose.ui.platform.LocalContext
 import com.plywoodpocket.crm.viewmodel.TaskViewModel
 import com.plywoodpocket.crm.viewmodel.TaskViewModelFactory
+import com.plywoodpocket.crm.screens.AdminTaskScreen
 
 @Composable
 fun AppNavHost(
@@ -244,6 +245,10 @@ fun AppNavHost(
                 viewModel = taskViewModel,
                 onBack = { navController.popBackStack() }
             )
+        }
+
+        composable("admin_tasks") {
+            AdminTaskScreen(onBack = { navController.popBackStack() })
         }
     }
 } 

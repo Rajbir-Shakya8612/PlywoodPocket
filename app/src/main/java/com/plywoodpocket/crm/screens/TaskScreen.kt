@@ -32,6 +32,9 @@ import com.plywoodpocket.crm.viewmodel.TaskViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
+import com.plywoodpocket.crm.screens.PriorityChip
+import com.plywoodpocket.crm.screens.DropdownMenuBox
+import com.plywoodpocket.crm.screens.DatePickerDialog
 
 @Composable
 fun TaskScreen(
@@ -306,24 +309,6 @@ fun TaskCard(
 }
 
 @Composable
-fun PriorityChip(priority: String?) {
-    val color = when (priority) {
-        "high" -> Color.Red
-        "medium" -> Color(0xFFFFA726)
-        "low" -> Color(0xFF66BB6A)
-        else -> Color.Gray
-    }
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = color.copy(alpha = 0.15f),
-        border = BorderStroke(1.dp, color),
-        modifier = Modifier.padding(start = 4.dp)
-    ) {
-        Text(priority?.capitalize() ?: "-", color = color, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
-    }
-}
-
-@Composable
 fun TaskDetailsDialog(task: Task, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -414,7 +399,7 @@ fun AddTaskDialog(onDismiss: () -> Unit, onSubmit: (Map<String, Any?>) -> Unit) 
                     DropdownMenuBox(
                         options = listOf("lead", "sale", "meeting"),
                         selected = type,
-                        onSelected = { type = it }
+                        onSelected = { selectedType -> type = selectedType }
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -423,7 +408,7 @@ fun AddTaskDialog(onDismiss: () -> Unit, onSubmit: (Map<String, Any?>) -> Unit) 
                     DropdownMenuBox(
                         options = listOf("pending", "in_progress", "completed"),
                         selected = status,
-                        onSelected = { status = it }
+                        onSelected = { selectedStatus -> status = selectedStatus }
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -432,7 +417,7 @@ fun AddTaskDialog(onDismiss: () -> Unit, onSubmit: (Map<String, Any?>) -> Unit) 
                     DropdownMenuBox(
                         options = listOf("low", "medium", "high"),
                         selected = priority,
-                        onSelected = { priority = it }
+                        onSelected = { selectedPriority -> priority = selectedPriority }
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -464,45 +449,6 @@ fun AddTaskDialog(onDismiss: () -> Unit, onSubmit: (Map<String, Any?>) -> Unit) 
         },
         shape = RoundedCornerShape(16.dp)
     )
-}
-
-@Composable
-fun DropdownMenuBox(options: List<String>, selected: String, onSelected: (String) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(onClick = { expanded = true }) {
-            Text(selected)
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            options.forEach { option ->
-                DropdownMenuItem(text = { Text(option) }, onClick = {
-                    onSelected(option)
-                    expanded = false
-                })
-            }
-        }
-    }
-}
-
-@Composable
-fun DatePickerDialog(onDateSelected: (String) -> Unit, onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val calendar = Calendar.getInstance()
-    val year = calendar.get(Calendar.YEAR)
-    val month = calendar.get(Calendar.MONTH)
-    val day = calendar.get(Calendar.DAY_OF_MONTH)
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        val datePicker = android.app.DatePickerDialog(
-            context,
-            { _, y, m, d ->
-                val formatted = String.format("%04d-%02d-%02d", y, m + 1, d)
-                onDateSelected(formatted)
-            },
-            year, month, day
-        )
-        datePicker.setOnCancelListener { onDismiss() }
-        datePicker.show()
-    }
 }
 
 @Composable
@@ -563,7 +509,7 @@ fun EditTaskDialog(task: Task, onDismiss: () -> Unit, onSubmit: (Map<String, Any
                     DropdownMenuBox(
                         options = listOf("lead", "sale", "meeting"),
                         selected = type,
-                        onSelected = { type = it }
+                        onSelected = { selectedType -> type = selectedType }
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -572,7 +518,7 @@ fun EditTaskDialog(task: Task, onDismiss: () -> Unit, onSubmit: (Map<String, Any
                     DropdownMenuBox(
                         options = listOf("pending", "in_progress", "completed"),
                         selected = status,
-                        onSelected = { status = it }
+                        onSelected = { selectedStatus -> status = selectedStatus }
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -581,7 +527,7 @@ fun EditTaskDialog(task: Task, onDismiss: () -> Unit, onSubmit: (Map<String, Any
                     DropdownMenuBox(
                         options = listOf("low", "medium", "high"),
                         selected = priority,
-                        onSelected = { priority = it }
+                        onSelected = { selectedPriority -> priority = selectedPriority }
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))

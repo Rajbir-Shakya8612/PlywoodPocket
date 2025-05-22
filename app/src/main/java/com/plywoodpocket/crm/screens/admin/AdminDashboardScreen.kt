@@ -61,7 +61,8 @@ fun AdminDashboardScreen(
             onLocationClick = { navController.navigate("admin_location_screen") },
             onSecurityClick = { navController.navigate("security_screen") },
             onBannersClick = { navController.navigate("admin_banner_dashboard") },
-            onLeadsClick = { navController.navigate("admin_leads_screen") }
+            onLeadsClick = { navController.navigate("admin_leads_screen") },
+            onTasksClick = { navController.navigate("admin_tasks") }
         )
         Spacer(modifier = Modifier.weight(1f))
         BottomNavBar(
@@ -131,7 +132,8 @@ fun AdminGridMenu(
     onLocationClick: () -> Unit,
     onSecurityClick: () -> Unit,
     onBannersClick: () -> Unit,
-    onLeadsClick: () -> Unit
+    onLeadsClick: () -> Unit,
+    onTasksClick: () -> Unit
 ) {
     val adminItems = listOf(
         Triple("Users", android.R.drawable.ic_menu_manage, Color(0xFF1976D2)) to onUsersClick,
@@ -144,7 +146,8 @@ fun AdminGridMenu(
         Triple("Location", android.R.drawable.ic_menu_save, Color(0xFF1976D2)) to onLocationClick,
         Triple("Security", android.R.drawable.ic_menu_camera, Color(0xFF1976D2)) to onSecurityClick,
         Triple("Banners", android.R.drawable.ic_menu_gallery, Color(0xFF1976D2)) to onBannersClick,
-        Triple("Leads", android.R.drawable.ic_menu_agenda,  Color(0xFF1976D2)) to onLeadsClick
+        Triple("Leads", android.R.drawable.ic_menu_agenda,  Color(0xFF1976D2)) to onLeadsClick,
+        Triple("Task", android.R.drawable.ic_menu_manage, Color(0xFF1976D2)) to onTasksClick
     )
     val filteredItems = if (searchQuery.isBlank()) null else adminItems.filter { it.first.first.contains(searchQuery, ignoreCase = true) }
 

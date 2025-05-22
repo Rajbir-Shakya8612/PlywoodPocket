@@ -304,10 +304,42 @@ interface ApiService {
         @Body request: Map<String, String>
     ): Response<com.plywoodpocket.crm.models.TaskResponse>
 
+    @Headers("Accept: application/json")
     @PUT("api/salesperson/tasks/{task}")
     suspend fun updateTask(
         @Path("task") taskId: Int,
         @Body request: Map<String, @JvmSuppressWildcards Any?>
     ): Response<TaskResponse>
+
+    // Admin Task Management
+    @Headers("Accept: application/json")
+    @GET("api/admin/tasks")
+    suspend fun getAdminTasks(
+        @Query("status") status: String? = null,
+        @Query("type") type: String? = null,
+        @Query("assignee") assignee: Int? = null,
+        @Query("search") search: String? = null,
+        @Query("page") page: Int? = null
+    ): Response<TaskListResponse>
+
+    @Headers("Accept: application/json")
+    @POST("api/admin/tasks")
+    suspend fun createAdminTask(@Body request: Map<String, @JvmSuppressWildcards Any?>): Response<TaskResponse>
+
+    @Headers("Accept: application/json")
+    @GET("api/admin/tasks/{task}")
+    suspend fun getAdminTask(@Path("task") taskId: Int): Response<TaskResponse>
+
+    @Headers("Accept: application/json")
+    @PUT("api/admin/tasks/{task}")
+    suspend fun updateAdminTask(@Path("task") taskId: Int, @Body request: Map<String, @JvmSuppressWildcards Any?>): Response<TaskResponse>
+
+    @Headers("Accept: application/json")
+    @DELETE("api/admin/tasks/{task}")
+    suspend fun deleteAdminTask(@Path("task") taskId: Int): Response<TaskResponse>
+
+    @Headers("Accept: application/json")
+    @PUT("api/admin/tasks/{task}/status")
+    suspend fun updateAdminTaskStatus(@Path("task") taskId: Int, @Body request: Map<String, String>): Response<TaskResponse>
 
 } 
