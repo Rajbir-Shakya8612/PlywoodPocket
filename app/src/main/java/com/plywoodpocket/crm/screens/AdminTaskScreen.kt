@@ -38,6 +38,7 @@ import com.plywoodpocket.crm.screens.PriorityChip
 import com.plywoodpocket.crm.screens.DropdownMenuBox
 import com.plywoodpocket.crm.screens.DatePickerDialog
 import android.widget.Toast
+import com.plywoodpocket.crm.utils.DateUtils
 
 @Composable
 fun AdminTaskScreen(
@@ -237,12 +238,7 @@ fun AdminTaskCard(
         "in_progress" to "In Progress",
         "completed" to "Completed"
     )
-    val dueDateFormatted = try {
-        val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val outputFormat = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
-        val date = inputFormat.parse(task.due_date.take(10))
-        date?.let { outputFormat.format(it) } ?: task.due_date
-    } catch (e: Exception) { task.due_date }
+    val dueDateFormatted = DateUtils.formatIsoToDate(task.due_date) ?: task.due_date
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
         elevation = CardDefaults.cardElevation(0.dp),
