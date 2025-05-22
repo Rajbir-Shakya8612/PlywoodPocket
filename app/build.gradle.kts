@@ -114,4 +114,6 @@ dependencies {
 
     // kotlinx-datetime
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+
+    implementation("com.google.accompanist:accompanist-systemuicontroller:0.32.0")
 }

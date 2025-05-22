@@ -39,11 +39,40 @@ import com.plywoodpocket.crm.screens.DropdownMenuBox
 import com.plywoodpocket.crm.screens.DatePickerDialog
 import android.widget.Toast
 import com.plywoodpocket.crm.utils.DateUtils
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.compose.runtime.SideEffect
+import androidx.compose.material.icons.filled.Search
+
+@Composable
+fun SearchBar(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    hint: String = "Search by title, due date, assignee, status..."
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        leadingIcon = {
+            Icon(Icons.Default.Search, contentDescription = null)
+        },
+        label = { Text(hint) },
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp)
+    )
+}
 
 @Composable
 fun AdminTaskScreen(
     onBack: (() -> Unit)? = null
 ) {
+    val systemUiController = rememberSystemUiController()
+    SideEffect {
+        systemUiController.setStatusBarColor(Color.Black)
+    }
     val context = LocalContext.current
     val adminTaskViewModel: AdminTaskViewModel = viewModel(
         factory = AdminTaskViewModelFactory(
@@ -64,6 +93,7 @@ fun AdminTaskScreen(
     var showDetailsDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var selectedTask by remember { mutableStateOf<Task?>(null) }
+    var searchText by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         adminTaskViewModel.fetchTasks()
@@ -72,19 +102,29 @@ fun AdminTaskScreen(
 
     Column(modifier = Modifier.fillMaxSize().padding(top = 24.dp, start = 12.dp, end = 12.dp)) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 20.dp, bottom = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { onBack?.invoke() }) {
                     Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                 }
-                Text("Admin Tasks", style = MaterialTheme.typography.headlineMedium)
+                Text(
+                    "Admin Tasks",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                    modifier = Modifier.padding(start = 2.dp)
+                )
             }
             IconButton(onClick = { showAddDialog = true }, modifier = Modifier.size(44.dp).padding(end = 4.dp)) {
                 Icon(Icons.Default.Add, contentDescription = "Add Task", tint = MaterialTheme.colorScheme.primary)
             }
         }
+        SearchBar(
+            value = searchText,
+            onValueChange = { searchText = it }
+        )
         Spacer(modifier = Modifier.height(8.dp))
         if (loading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -96,8 +136,17 @@ fun AdminTaskScreen(
                     Text("No tasks found", color = MaterialTheme.colorScheme.outline)
                 }
             } else {
+                val filteredTasks = tasks.filter { task ->
+                    val search = searchText.trim().lowercase()
+                    if (search.isBlank()) return@filter true
+                    val inTitle = task.title.lowercase().contains(search)
+                    val inDueDate = task.due_date?.lowercase()?.contains(search) == true
+                    val inAssignee = task.assignee?.name?.lowercase()?.contains(search) == true
+                    val inStatus = task.status.lowercase().contains(search)
+                    inTitle || inDueDate || inAssignee || inStatus
+                }
                 AdminTaskList(
-                    tasks = tasks,
+                    tasks = filteredTasks,
                     onEdit = { task -> selectedTask = task; showEditDialog = true },
                     onDetails = { task -> selectedTask = task; showDetailsDialog = true },
                     onDelete = { task -> selectedTask = task; showDeleteDialog = true },
@@ -184,7 +233,11 @@ fun AdminTaskList(
         "in_progress" to Color(0xFF42A5F5),
         "completed" to Color(0xFF66BB6A)
     )
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = 24.dp)
+    ) {
         statusOrder.forEach { status ->
             val list = groupedTasks[status] ?: emptyList()
             if (list.isNotEmpty()) {
@@ -197,7 +250,7 @@ fun AdminTaskList(
                             modifier = Modifier.size(10.dp, 24.dp).background(statusColors[status] ?: Color.Gray, RoundedCornerShape(4.dp))
                         )
                         Text(
-                            text = statusLabels[status] ?: status.capitalize(),
+                            text = statusLabels[status] ?: status.replaceFirstChar { it.uppercase() },
                             color = statusColors[status] ?: Color.Gray,
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
