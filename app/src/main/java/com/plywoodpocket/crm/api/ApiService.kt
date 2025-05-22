@@ -342,4 +342,16 @@ interface ApiService {
     @PUT("api/admin/tasks/{task}/status")
     suspend fun updateAdminTaskStatus(@Path("task") taskId: Int, @Body request: Map<String, String>): Response<TaskResponse>
 
+    @Headers("Accept: application/json")
+    @GET("api/admin/dashboard")
+    suspend fun getAdminDashboardReport(): Response<AdminDashboardReportResponse>
+
+    @Headers("Accept: application/json")
+    @GET("api/admin/attendance/overview")
+    suspend fun getAdminAttendanceOverview(@Query("date") date: String? = null, @Query("user_id") userId: Int? = null, @Query("status") status: String? = null): Response<AttendanceOverviewResponse>
+
+    @Headers("Accept: application/json")
+    @GET("api/admin/performance/overview")
+    suspend fun getAdminPerformanceOverview(@Query("month") month: String? = null): Response<PerformanceOverviewResponse>
+
 } 

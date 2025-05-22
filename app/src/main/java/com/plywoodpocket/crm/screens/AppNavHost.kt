@@ -153,6 +153,17 @@ fun AppNavHost(
                 }
             )
         }
+        composable("reports_screen") {
+            val context = LocalContext.current
+            val apiClient = remember { com.plywoodpocket.crm.api.ApiClient(com.plywoodpocket.crm.utils.TokenManager(context)) }
+            val reportsViewModel: com.plywoodpocket.crm.viewmodel.ReportsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    @Suppress("UNCHECKED_CAST")
+                    return com.plywoodpocket.crm.viewmodel.ReportsViewModel(apiClient) as T
+                }
+            })
+            com.plywoodpocket.crm.screens.admin.AdminReportsScreen(reportsViewModel = reportsViewModel)
+        }
         composable("users_screen") {
             UserManagementScreen(onBack = { navController.popBackStack() })
         }
