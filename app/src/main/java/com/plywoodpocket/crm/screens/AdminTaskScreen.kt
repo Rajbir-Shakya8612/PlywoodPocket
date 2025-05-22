@@ -70,20 +70,6 @@ fun AdminTaskScreen(
         userManagementViewModel.loadUsers()
     }
 
-    LaunchedEffect(taskUpdateSuccess) {
-        if (taskUpdateSuccess) {
-            if (showAddDialog) {
-                showAddDialog = false
-                Toast.makeText(context, "Task created successfully!", Toast.LENGTH_SHORT).show()
-            }
-            if (showEditDialog) {
-                showEditDialog = false
-                Toast.makeText(context, "Task updated successfully!", Toast.LENGTH_SHORT).show()
-            }
-            adminTaskViewModel.resetTaskUpdateSuccess()
-        }
-    }
-
     Column(modifier = Modifier.fillMaxSize().padding(top = 24.dp, start = 12.dp, end = 12.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
@@ -124,10 +110,14 @@ fun AdminTaskScreen(
         AdminAddEditTaskDialog(
             users = users,
             onDismiss = { showAddDialog = false },
-            onSubmit = { taskMap, errorHandler, onDismiss ->
+            onSubmit = { taskMap, errorHandler, _ ->
                 adminTaskViewModel.createTask(
                     taskMap,
-                    onSuccess = {},
+                    onSuccess = {
+                        showAddDialog = false
+                        adminTaskViewModel.fetchTasks()
+                        Toast.makeText(context, "Task created successfully!", Toast.LENGTH_SHORT).show()
+                    },
                     onError = errorHandler
                 )
             }
@@ -137,12 +127,20 @@ fun AdminTaskScreen(
         AdminAddEditTaskDialog(
             users = users,
             task = selectedTask,
-            onDismiss = { showEditDialog = false },
-            onSubmit = { taskMap, errorHandler, onDismiss ->
+            onDismiss = {
+                showEditDialog = false
+                selectedTask = null
+            },
+            onSubmit = { taskMap, errorHandler, _ ->
                 adminTaskViewModel.updateTask(
                     selectedTask!!.id,
                     taskMap,
-                    onSuccess = {},
+                    onSuccess = {
+                        showEditDialog = false
+                        selectedTask = null
+                        adminTaskViewModel.fetchTasks()
+                        Toast.makeText(context, "Task updated successfully!", Toast.LENGTH_SHORT).show()
+                    },
                     onError = errorHandler
                 )
             }
