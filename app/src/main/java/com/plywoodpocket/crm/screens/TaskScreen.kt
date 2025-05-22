@@ -35,6 +35,7 @@ import kotlinx.coroutines.launch
 import com.plywoodpocket.crm.screens.PriorityChip
 import com.plywoodpocket.crm.screens.DropdownMenuBox
 import com.plywoodpocket.crm.screens.DatePickerDialog
+import com.plywoodpocket.crm.utils.DateUtils
 
 @Composable
 fun TaskScreen(
@@ -205,12 +206,7 @@ fun TaskCard(
         "in_progress" to "In Progress",
         "completed" to "Completed"
     )
-    val dueDateFormatted = try {
-        val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val outputFormat = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
-        val date = inputFormat.parse(task.due_date.take(10))
-        date?.let { outputFormat.format(it) } ?: task.due_date
-    } catch (e: Exception) { task.due_date }
+    val dueDateFormatted = DateUtils.formatIsoToDate(task.due_date) ?: task.due_date
     val today = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(Date())
     val isDueToday = dueDateFormatted == today
     val isOverdue = try {
@@ -323,12 +319,7 @@ fun TaskDetailsDialog(task: Task, onDismiss: () -> Unit) {
                 Text("Type: ${task.type?.capitalize() ?: "-"}")
                 Text("Status: ${task.status.capitalize()}")
                 Text("Priority: ${task.priority?.capitalize() ?: "-"}")
-                val dueDateFormatted = try {
-                    val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                    val outputFormat = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
-                    val date = inputFormat.parse(task.due_date.take(10))
-                    date?.let { outputFormat.format(it) } ?: task.due_date
-                } catch (e: Exception) { task.due_date }
+                val dueDateFormatted = DateUtils.formatIsoToDate(task.due_date) ?: task.due_date
                 Text("Due Date: $dueDateFormatted")
                 if (task.assignee?.name != null) {
                     Text("Assigned by: ${task.assignee.name}")

@@ -19,18 +19,25 @@ object DateUtils {
     fun getCurrentYear(): Int = Calendar.getInstance().get(Calendar.YEAR)
 
     fun formatIsoToDate(iso: String?): String? {
-        return iso?.let {
+        if (iso == null) return null
+        val formats = listOf(
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss'Z'",
+            "yyyy-MM-dd"
+        )
+        for (pattern in formats) {
             try {
-                val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", Locale.getDefault()).apply {
+                val parser = SimpleDateFormat(pattern, Locale.getDefault()).apply {
                     timeZone = TimeZone.getTimeZone("UTC")
                 }
-                val date = parser.parse(it)
-                SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).apply {
-                    timeZone = TimeZone.getTimeZone("Asia/Kolkata")
-                }.format(date ?: return null)
-            } catch (e: Exception) {
-                null
-            }
+                val date = parser.parse(iso)
+                if (date != null) {
+                    return SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).apply {
+                        timeZone = TimeZone.getTimeZone("Asia/Kolkata")
+                    }.format(date)
+                }
+            } catch (_: Exception) {}
         }
+        return iso
     }
 } 
