@@ -1,5 +1,6 @@
 package com.plywoodpocket.crm.screens.admin
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -41,6 +42,10 @@ import com.plywoodpocket.crm.models.AttendanceChartData
 import com.plywoodpocket.crm.models.PerformanceChartData
 import com.plywoodpocket.crm.models.LeadChartDataItem
 import com.plywoodpocket.crm.models.UserSimple
+import com.github.mikephil.charting.formatter.ValueFormatter
+import com.github.mikephil.charting.listener.OnChartValueSelectedListener
+import com.github.mikephil.charting.highlight.Highlight
+import com.github.mikephil.charting.data.Entry
 
 @Composable
 fun AdminReportsScreen(
@@ -180,10 +185,48 @@ fun AdminReportsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
+                            Column(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
                                 Text("Lead Status Distribution", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                 Spacer(modifier = Modifier.height(8.dp))
-                                PieChartView(data = leadChart)
+                                // Legend
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 16.dp),
+                                    horizontalAlignment = Alignment.Start
+                                ) {
+                                    leadChart.forEach { item ->
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(14.dp)
+                                                    .background(
+                                                        color = try {
+                                                            Color(android.graphics.Color.parseColor(item.color ?: "#3B82F6"))
+                                                        } catch (e: Exception) {
+                                                            Color(0xFF3B82F6)
+                                                        },
+                                                        shape = androidx.compose.foundation.shape.CircleShape
+                                                    )
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(item.name ?: "-", fontSize = 14.sp)
+                                        }
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                    }
+                                }
+                                // PieChart centered
+                                PieChartView(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(420.dp),
+                                    data = leadChart
+                                )
                             }
                         }
                     }
@@ -306,42 +349,102 @@ fun PieChartView(
     data: List<LeadChartDataItem>
 ) {
     val context = LocalContext.current
-    AndroidView(
-        modifier = modifier.height(220.dp),
-        factory = { ctx ->
-            PieChart(ctx).apply {
+    val selectedPercentage = remember { mutableStateOf<String?>(null) }
+    Box(modifier = modifier.height(420.dp).width(420.dp)) {
+        AndroidView(
+            modifier = Modifier.matchParentSize(),
+            factory = { ctx ->
+                PieChart(ctx).apply {
+                    val entries = data.mapNotNull { item ->
+                        if (item.count != null) PieEntry(item.count.toFloat()) else null
+                    }
+                    val colors = data.map { item ->
+                        try { AndroidColor.parseColor(item.color ?: "#3B82F6") } catch (_: Exception) { ColorTemplate.COLORFUL_COLORS.random() }
+                    }
+                    val dataSet = PieDataSet(entries, "")
+                    dataSet.colors = colors
+                    dataSet.valueTextSize = 14f
+                    dataSet.setDrawValues(true)
+                    dataSet.valueFormatter = object : ValueFormatter() {
+                        override fun getFormattedValue(value: Float): String {
+                            return "%.1f%%".format(value)
+                        }
+                    }
+                    dataSet.selectionShift = 30f // More visible highlight
+                    val pieData = PieData(dataSet)
+                    this.data = pieData
+                    description = Description().apply { text = "" }
+                    legend.isEnabled = false
+                    setUsePercentValues(true)
+                    setHighlightPerTapEnabled(true)
+                    setOnChartValueSelectedListener(object : OnChartValueSelectedListener {
+                        override fun onValueSelected(e: Entry?, h: Highlight?) {
+                            val index = h?.x?.toInt() ?: 0
+                            val percent = data.getOrNull(index)?.percentage ?: 0.0
+                            selectedPercentage.value = "%.1f%%".format(percent)
+                        }
+                        override fun onNothingSelected() {
+                            selectedPercentage.value = null
+                        }
+                    })
+                    invalidate()
+                }
+            },
+            update = { chart ->
                 val entries = data.mapNotNull { item ->
-                    if (item.count != null && item.name != null) PieEntry(item.count.toFloat(), item.name) else null
+                    if (item.count != null) PieEntry(item.count.toFloat()) else null
                 }
                 val colors = data.map { item ->
                     try { AndroidColor.parseColor(item.color ?: "#3B82F6") } catch (_: Exception) { ColorTemplate.COLORFUL_COLORS.random() }
                 }
-                val dataSet = PieDataSet(entries, "Lead Status")
+                val dataSet = PieDataSet(entries, "")
                 dataSet.colors = colors
-                dataSet.valueTextSize = 12f
+                dataSet.valueTextSize = 14f
+                dataSet.setDrawValues(true)
+                dataSet.valueFormatter = object : ValueFormatter() {
+                    override fun getFormattedValue(value: Float): String {
+                        return "%.1f%%".format(value)
+                    }
+                }
+                dataSet.selectionShift = 30f
                 val pieData = PieData(dataSet)
-                this.data = pieData
-                description = Description().apply { text = "" }
-                legend.orientation = Legend.LegendOrientation.HORIZONTAL
-                legend.isWordWrapEnabled = true
-                legend.textSize = 12f
-                setUsePercentValues(true)
-                invalidate()
+                chart.data = pieData
+                chart.legend.isEnabled = false
+                chart.setHighlightPerTapEnabled(true)
+                chart.setOnChartValueSelectedListener(object : OnChartValueSelectedListener {
+                    override fun onValueSelected(e: Entry?, h: Highlight?) {
+                        val index = h?.x?.toInt() ?: 0
+                        val percent = data.getOrNull(index)?.percentage ?: 0.0
+                        selectedPercentage.value = "%.1f%%".format(percent)
+                    }
+                    override fun onNothingSelected() {
+                        selectedPercentage.value = null
+                    }
+                })
+                chart.invalidate()
             }
-        },
-        update = { chart ->
-            val entries = data.mapNotNull { item ->
-                if (item.count != null && item.name != null) PieEntry(item.count.toFloat(), item.name) else null
+        )
+        // Overlay for selected percentage
+        if (selectedPercentage.value != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp)
+            ) {
+                Surface(
+                    color = Color.White.copy(alpha = 0.9f),
+                    shape = MaterialTheme.shapes.medium,
+                    shadowElevation = 4.dp
+                ) {
+                    Text(
+                        text = selectedPercentage.value!!,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = Color.Black,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
             }
-            val colors = data.map { item ->
-                try { AndroidColor.parseColor(item.color ?: "#3B82F6") } catch (_: Exception) { ColorTemplate.COLORFUL_COLORS.random() }
-            }
-            val dataSet = PieDataSet(entries, "Lead Status")
-            dataSet.colors = colors
-            dataSet.valueTextSize = 12f
-            val pieData = PieData(dataSet)
-            chart.data = pieData
-            chart.invalidate()
         }
-    )
+    }
 }
