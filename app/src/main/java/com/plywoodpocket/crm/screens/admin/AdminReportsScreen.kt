@@ -21,6 +21,7 @@ import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.toArgb
@@ -71,31 +72,30 @@ fun AdminReportsScreen(
                 )
             }
             is ReportsUiState.Success -> {
-                val data = (uiState as ReportsUiState.Success)
+                val data = uiState as ReportsUiState.Success
+                val dashboard = data.dashboard
+                val attendance = data.attendance
+                val performance = data.performance
+                val salespersons = dashboard?.salespersons
+                val selectedSalespersonIdState = remember { mutableStateOf<Int?>(null) }
+                val selectedSalespersonId = selectedSalespersonIdState.value
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp)
+                        .padding(top = 32.dp, start = 16.dp, end = 16.dp, bottom = 24.dp)
                 ) {
-                    Spacer(modifier = Modifier.height(32.dp)) // Top space for status bar
-                    Text(
-                        "DEBUG: attendanceData=" + (data.dashboard?.attendanceData?.labels?.size?.toString() ?: "null") +
-                        ", performanceData=" + (data.dashboard?.performanceData?.labels?.size?.toString() ?: "null") +
-                        ", leadChartData=" + (data.dashboard?.leadChartData?.size?.toString() ?: "null"),
-                        color = Color.Red,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    val salespersons = data.dashboard?.salespersons
-                    val selectedSalespersonIdState = remember { mutableStateOf<Int?>(null) }
-                    val selectedSalespersonId = selectedSalespersonIdState.value
-                    Text("Admin Reports", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    data.dashboard?.let { DashboardStatsSection(it) }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { /* TODO: Back navigation logic yahan likho */ }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Admin Reports", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    dashboard?.let { DashboardStatsSection(it) }
                     Spacer(modifier = Modifier.height(24.dp))
-
-                    // Salesperson Filter
                     if (!salespersons.isNullOrEmpty()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("Filter by Salesperson:", fontWeight = FontWeight.Medium)
@@ -108,9 +108,7 @@ fun AdminReportsScreen(
                         }
                         Spacer(modifier = Modifier.height(16.dp))
                     }
-
-                    // Attendance Chart Section (with filter)
-                    data.dashboard?.attendanceData?.let { attData ->
+                    dashboard?.attendanceData?.let { attData ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD))
@@ -135,17 +133,15 @@ fun AdminReportsScreen(
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                    StatItem("Present", data.attendance?.presentCount?.toString() ?: "-")
-                                    StatItem("Absent", data.attendance?.absentCount?.toString() ?: "-")
-                                    StatItem("Late", data.attendance?.lateCount?.toString() ?: "-")
+                                    StatItem("Present", attendance?.presentCount?.toString() ?: "-")
+                                    StatItem("Absent", attendance?.absentCount?.toString() ?: "-")
+                                    StatItem("Late", attendance?.lateCount?.toString() ?: "-")
                                 }
                             }
                         }
                     }
                     Spacer(modifier = Modifier.height(24.dp))
-
-                    // Performance Chart Section (with filter)
-                    data.dashboard?.performanceData?.let { perfData ->
+                    dashboard?.performanceData?.let { perfData ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
@@ -170,17 +166,15 @@ fun AdminReportsScreen(
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                    StatItem("Present", data.performance?.totalPresent?.toString() ?: "-")
-                                    StatItem("Absent", data.performance?.totalAbsent?.toString() ?: "-")
-                                    StatItem("Late", data.performance?.totalLate?.toString() ?: "-")
+                                    StatItem("Present", performance?.totalPresent?.toString() ?: "-")
+                                    StatItem("Absent", performance?.totalAbsent?.toString() ?: "-")
+                                    StatItem("Late", performance?.totalLate?.toString() ?: "-")
                                 }
                             }
                         }
                     }
                     Spacer(modifier = Modifier.height(24.dp))
-
-                    // Lead Status Pie Chart
-                    data.dashboard?.leadChartData?.let { leadChart ->
+                    dashboard?.leadChartData?.let { leadChart ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
@@ -193,7 +187,6 @@ fun AdminReportsScreen(
                             ) {
                                 Text("Lead Status Distribution", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                 Spacer(modifier = Modifier.height(8.dp))
-                                // Legend
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -220,7 +213,6 @@ fun AdminReportsScreen(
                                         Spacer(modifier = Modifier.height(6.dp))
                                     }
                                 }
-                                // PieChart centered
                                 PieChartView(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -233,6 +225,14 @@ fun AdminReportsScreen(
                 }
             }
         }
+        // Overlay: Status bar black background (always on top)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(32.dp)
+                .background(Color.Black)
+                .align(Alignment.TopStart)
+        )
     }
 }
 
