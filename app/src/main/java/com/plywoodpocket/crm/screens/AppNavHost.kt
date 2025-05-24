@@ -162,7 +162,7 @@ fun AppNavHost(
                     return com.plywoodpocket.crm.viewmodel.ReportsViewModel(apiClient) as T
                 }
             })
-            com.plywoodpocket.crm.screens.admin.AdminReportsScreen(reportsViewModel = reportsViewModel)
+            com.plywoodpocket.crm.screens.admin.AdminReportsScreen(reportsViewModel = reportsViewModel, onBack = { navController.popBackStack() })
         }
         composable("users_screen") {
             UserManagementScreen(onBack = { navController.popBackStack() })

@@ -59,7 +59,8 @@ import java.util.Locale
 
 @Composable
 fun AdminReportsScreen(
-    reportsViewModel: ReportsViewModel
+    reportsViewModel: ReportsViewModel,
+    onBack: () -> Unit
 ) {
     val uiState by reportsViewModel.uiState.collectAsState()
 
@@ -109,7 +110,7 @@ fun AdminReportsScreen(
                 ) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { /* TODO: Back navigation logic yahan likho */ }) {
+                        IconButton(onClick = { onBack() }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                         }
                         Spacer(modifier = Modifier.width(4.dp))
