@@ -63,8 +63,21 @@ fun AdminReportsScreen(
 ) {
     val uiState by reportsViewModel.uiState.collectAsState()
 
-    LaunchedEffect(Unit) {
-        reportsViewModel.loadAllReports()
+    val months: List<String> = getLast12Months()
+    val monthNames: List<String> = months.map { monthStr ->
+        val parts = monthStr.split("-")
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.YEAR, parts[0].toInt())
+            set(Calendar.MONTH, parts[1].toInt() - 1)
+        }
+        SimpleDateFormat("MMM yyyy", Locale.getDefault()).format(cal.time)
+    }
+    val monthMap: Map<String, String> = months.zip(monthNames).toMap()
+    val selectedMonthState = remember { mutableStateOf(months.last()) }
+    val selectedMonth = selectedMonthState.value
+
+    LaunchedEffect(selectedMonth) {
+        reportsViewModel.loadAllReports(month = selectedMonth)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -105,18 +118,6 @@ fun AdminReportsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     dashboard?.let { DashboardStatsSection(it) }
                     Spacer(modifier = Modifier.height(24.dp))
-//                    if (!salespersons.isNullOrEmpty()) {
-//                        Row(verticalAlignment = Alignment.CenterVertically) {
-//                            Text("Filter by Salesperson:", fontWeight = FontWeight.Medium)
-//                            Spacer(modifier = Modifier.width(8.dp))
-//                            SalespersonFilter(
-//                                salespersons = salespersons,
-//                                selectedId = selectedSalespersonId,
-//                                onSelected = { selectedSalespersonIdState.value = it }
-//                            )
-//                        }
-//                        Spacer(modifier = Modifier.height(16.dp))
-//                    }
                     dashboard?.attendanceData?.let { attData ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -150,18 +151,6 @@ fun AdminReportsScreen(
                     }
                     Spacer(modifier = Modifier.height(24.dp))
                     dashboard?.performanceData?.let { perfData ->
-                        val months: List<String> = getLast12Months()
-                        val monthNames: List<String> = months.map { monthStr ->
-                            val parts = monthStr.split("-")
-                            val cal = Calendar.getInstance().apply {
-                                set(Calendar.YEAR, parts[0].toInt())
-                                set(Calendar.MONTH, parts[1].toInt() - 1)
-                            }
-                            SimpleDateFormat("MMM yyyy", Locale.getDefault()).format(cal.time)
-                        }
-                        val monthMap: Map<String, String> = months.zip(monthNames).toMap()
-                        val selectedMonthState = remember { mutableStateOf(months.last()) }
-                        val selectedMonth = selectedMonthState.value
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
@@ -176,7 +165,6 @@ fun AdminReportsScreen(
                                             val monthKey = monthMap.entries.find { it.value == selectedName }?.key
                                             if (monthKey != null) {
                                                 selectedMonthState.value = monthKey
-                                                reportsViewModel.loadAllReports(month = monthKey)
                                             }
                                         }
                                     )
@@ -203,7 +191,8 @@ fun AdminReportsScreen(
                                         labels = chartLabels,
                                         presentValues = presentValues,
                                         absentValues = absentValues,
-                                        lateValues = lateValues
+                                        lateValues = lateValues,
+                                        showStackValuesInside = true
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -548,7 +537,8 @@ fun StackedBarChartView(
     labels: List<String>,
     presentValues: List<Int>,
     absentValues: List<Int>,
-    lateValues: List<Int>
+    lateValues: List<Int>,
+    showStackValuesInside: Boolean = false
 ) {
     val entries = labels.indices.map { idx ->
         BarEntry(
@@ -602,6 +592,8 @@ fun StackedBarChartView(
                 setFitBars(true)
                 xAxis.axisMinimum = -0.5f
                 xAxis.axisMaximum = labels.size - 0.5f
+                // Always show values above bars (default)
+                this.setDrawValueAboveBar(true)
                 invalidate()
             }
         },
@@ -636,6 +628,8 @@ fun StackedBarChartView(
             chart.data = data
             chart.xAxis.valueFormatter = com.github.mikephil.charting.formatter.IndexAxisValueFormatter(labels)
             chart.xAxis.labelCount = labels.size
+            // Always show values above bars (default)
+            chart.setDrawValueAboveBar(true)
             chart.invalidate()
         }
     )
