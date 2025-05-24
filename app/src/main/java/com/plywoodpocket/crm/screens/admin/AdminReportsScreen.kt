@@ -101,18 +101,18 @@ fun AdminReportsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     dashboard?.let { DashboardStatsSection(it) }
                     Spacer(modifier = Modifier.height(24.dp))
-                    if (!salespersons.isNullOrEmpty()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Filter by Salesperson:", fontWeight = FontWeight.Medium)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            SalespersonFilter(
-                                salespersons = salespersons,
-                                selectedId = selectedSalespersonId,
-                                onSelected = { selectedSalespersonIdState.value = it }
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
+//                    if (!salespersons.isNullOrEmpty()) {
+//                        Row(verticalAlignment = Alignment.CenterVertically) {
+//                            Text("Filter by Salesperson:", fontWeight = FontWeight.Medium)
+//                            Spacer(modifier = Modifier.width(8.dp))
+//                            SalespersonFilter(
+//                                salespersons = salespersons,
+//                                selectedId = selectedSalespersonId,
+//                                onSelected = { selectedSalespersonIdState.value = it }
+//                            )
+//                        }
+//                        Spacer(modifier = Modifier.height(16.dp))
+//                    }
                     dashboard?.attendanceData?.let { attData ->
                         Card(
                             modifier = Modifier.fillMaxWidth(),
