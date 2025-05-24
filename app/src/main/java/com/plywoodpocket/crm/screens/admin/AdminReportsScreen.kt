@@ -22,6 +22,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.toArgb
@@ -47,6 +48,10 @@ import com.github.mikephil.charting.formatter.ValueFormatter
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener
 import com.github.mikephil.charting.highlight.Highlight
 import com.github.mikephil.charting.data.Entry
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.filled.Info
 
 @Composable
 fun AdminReportsScreen(
@@ -251,9 +256,27 @@ fun DashboardStatsSection(dashboard: com.plywoodpocket.crm.models.AdminDashboard
                 StatItem("Sales", dashboard.totalSales?.toString() ?: "-")
             }
             Spacer(modifier = Modifier.height(8.dp))
+            var showLeadInfoDialog = remember { mutableStateOf(false) }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                StatItem("Attendance %", dashboard.todayAttendance?.toString() ?: "-")
-                StatItem("Lead %", dashboard.leadChange?.let { "${"%.1f".format(it)}%" } ?: "-")
+                StatItem("Attendance (Today)", dashboard.todayAttendance?.toString() ?: "-")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    StatItem("Lead %", dashboard.leadChange?.let { "${"%.1f".format(it)}%" } ?: "-")
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(onClick = { showLeadInfoDialog.value = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Info",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    InfoTooltipDialog(
+                        showDialog = showLeadInfoDialog.value,
+                        onDismiss = { showLeadInfoDialog.value = false },
+                        title = "Lead % Info",
+                        message = "Lead % shows the percentage change in leads compared to the previous period."
+                    )
+                }
                 StatItem("Sales %", dashboard.salesChange?.let { "${"%.1f".format(it)}%" } ?: "-")
             }
         }
@@ -446,5 +469,24 @@ fun PieChartView(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun InfoTooltipDialog(
+    showDialog: Boolean,
+    onDismiss: () -> Unit,
+    title: String = "Info",
+    message: String
+) {
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            confirmButton = {
+                TextButton(onClick = onDismiss) { Text("OK") }
+            },
+            title = { Text(title) },
+            text = { Text(message) }
+        )
     }
 }
