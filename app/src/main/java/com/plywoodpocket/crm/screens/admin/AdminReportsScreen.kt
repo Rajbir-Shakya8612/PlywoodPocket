@@ -260,6 +260,14 @@ fun DashboardStatsSection(dashboard: com.plywoodpocket.crm.models.AdminDashboard
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 StatItem("Attendance (Today)", dashboard.todayAttendance?.toString() ?: "-")
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    val currentLeads = dashboard.totalLeads ?: 0
+                    val leadChange = dashboard.leadChange ?: 0f
+                    val previousLeads = if (leadChange != -100f) {
+                        (currentLeads * 100f / (100f + leadChange)).toInt()
+                    } else {
+                        0
+                    }
+                    val leadChangeText = "Lead % shows the percentage change in leads compared to the previous period.\nPrevious period: $previousLeads leads\nCurrent period: $currentLeads leads"
                     StatItem("Lead %", dashboard.leadChange?.let { "${"%.1f".format(it)}%" } ?: "-")
                     Spacer(modifier = Modifier.width(4.dp))
                     IconButton(onClick = { showLeadInfoDialog.value = true }) {
@@ -274,7 +282,7 @@ fun DashboardStatsSection(dashboard: com.plywoodpocket.crm.models.AdminDashboard
                         showDialog = showLeadInfoDialog.value,
                         onDismiss = { showLeadInfoDialog.value = false },
                         title = "Lead % Info",
-                        message = "Lead % shows the percentage change in leads compared to the previous period."
+                        message = leadChangeText
                     )
                 }
                 StatItem("Sales %", dashboard.salesChange?.let { "${"%.1f".format(it)}%" } ?: "-")
