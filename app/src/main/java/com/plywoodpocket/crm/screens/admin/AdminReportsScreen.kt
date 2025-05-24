@@ -52,6 +52,10 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.filled.Info
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+
 
 @Composable
 fun AdminReportsScreen(
@@ -146,30 +150,70 @@ fun AdminReportsScreen(
                     }
                     Spacer(modifier = Modifier.height(24.dp))
                     dashboard?.performanceData?.let { perfData ->
+                        val months: List<String> = getLast12Months()
+                        val monthNames: List<String> = months.map { monthStr ->
+                            val parts = monthStr.split("-")
+                            val cal = Calendar.getInstance().apply {
+                                set(Calendar.YEAR, parts[0].toInt())
+                                set(Calendar.MONTH, parts[1].toInt() - 1)
+                            }
+                            SimpleDateFormat("MMM yyyy", Locale.getDefault()).format(cal.time)
+                        }
+                        val monthMap: Map<String, String> = months.zip(monthNames).toMap()
+                        val selectedMonthState = remember { mutableStateOf(months.last()) }
+                        val selectedMonth = selectedMonthState.value
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0))
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Performance (This Month)", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                val filteredPerformance = if (selectedSalespersonId == null) perfData.data?.map { it.toInt() } ?: emptyList() else perfData.data?.map { it.toInt() } ?: emptyList()
-                                val perfChartWidth = ((perfData.labels?.size ?: 0) * 60).dp
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                    Text("Performance", fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.weight(1f))
+                                    MonthDropdown(
+                                        months = monthNames,
+                                        selected = monthMap[selectedMonth] ?: monthNames.last(),
+                                        onSelect = { selectedName ->
+                                            val monthKey = monthMap.entries.find { it.value == selectedName }?.key
+                                            if (monthKey != null) {
+                                                selectedMonthState.value = monthKey
+                                                reportsViewModel.loadAllReports(month = monthKey)
+                                            }
+                                        }
+                                    )
+                                }
+                                Text(
+                                    text = "Performance for: ${monthMap[selectedMonth] ?: monthNames.last()}",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = Color(0xFF1976D2),
+                                    modifier = Modifier.padding(bottom = 8.dp, top = 8.dp)
+                                )
+                                val chartLabels = performance?.labels ?: emptyList()
+                                val presentValues = performance?.present ?: emptyList()
+                                val absentValues = performance?.absent ?: emptyList()
+                                val lateValues = performance?.late ?: emptyList()
+                                val perfChartWidth = ((chartLabels.size) * 60).dp
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .horizontalScroll(rememberScrollState())
                                 ) {
-                                    BarChartView(
+                                    StackedBarChartView(
                                         modifier = Modifier.width(maxOf(400.dp, perfChartWidth)),
-                                        labels = perfData.labels ?: emptyList(),
-                                        values = filteredPerformance,
-                                        label = "Performance",
-                                        barColor = com.github.mikephil.charting.utils.ColorTemplate.COLORFUL_COLORS[1]
+                                        labels = chartLabels,
+                                        presentValues = presentValues,
+                                        absentValues = absentValues,
+                                        lateValues = lateValues
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp)
+                                        .background(Color(0xFFF5F5F5), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)),
+                                    horizontalArrangement = Arrangement.SpaceEvenly
+                                ) {
                                     StatItem("Present", performance?.totalPresent?.toString() ?: "-")
                                     StatItem("Absent", performance?.totalAbsent?.toString() ?: "-")
                                     StatItem("Late", performance?.totalLate?.toString() ?: "-")
