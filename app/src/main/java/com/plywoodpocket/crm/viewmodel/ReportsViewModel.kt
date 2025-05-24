@@ -31,9 +31,11 @@ class ReportsViewModel(private val apiClient: ApiClient) : ViewModel() {
                 val attendanceResp = apiClient.apiService.getAdminAttendanceOverview(date, userId, status)
                 val performanceResp = apiClient.apiService.getAdminPerformanceOverview(month)
 
+                val dashboardData = dashboardResp.body()?.data
+
                 if (dashboardResp.isSuccessful && attendanceResp.isSuccessful && performanceResp.isSuccessful) {
                     _uiState.value = ReportsUiState.Success(
-                        dashboard = dashboardResp.body(),
+                        dashboard = dashboardData,
                         attendance = attendanceResp.body(),
                         performance = performanceResp.body()
                     )

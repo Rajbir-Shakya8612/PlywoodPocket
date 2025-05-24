@@ -344,7 +344,7 @@ interface ApiService {
 
     @Headers("Accept: application/json")
     @GET("api/admin/dashboard")
-    suspend fun getAdminDashboardReport(): Response<AdminDashboardReportResponse>
+    suspend fun getAdminDashboardReport(): Response<DashboardApiResponse>
 
     @Headers("Accept: application/json")
     @GET("api/admin/attendance/overview")

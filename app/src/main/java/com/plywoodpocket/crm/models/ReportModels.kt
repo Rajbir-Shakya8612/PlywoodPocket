@@ -105,4 +105,11 @@ data class PerformanceOverviewResponse(
     @SerializedName("totalLate") val totalLate: Int?,
     @SerializedName("status") val status: String? = null,
     @SerializedName("message") val message: String? = null
+)
+
+// Wrapper for dashboard API response
+
+data class DashboardApiResponse(
+    val success: Boolean,
+    val data: AdminDashboardReportResponse?
 ) 
