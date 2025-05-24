@@ -121,26 +121,25 @@ fun AdminReportsScreen(
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text("Attendance (Last 30 Days)", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                                 Spacer(modifier = Modifier.height(8.dp))
-                                val filteredPresent = if (selectedSalespersonId == null) attData.present ?: emptyList() else attData.present ?: emptyList()
                                 val chartWidth = ((attData.labels?.size ?: 0) * 60).dp
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .horizontalScroll(rememberScrollState())
                                 ) {
-                                    BarChartView(
+                                    StackedBarChartView(
                                         modifier = Modifier.width(maxOf(400.dp, chartWidth)),
                                         labels = attData.labels ?: emptyList(),
-                                        values = filteredPresent,
-                                        label = "Present",
-                                        barColor = com.github.mikephil.charting.utils.ColorTemplate.COLORFUL_COLORS[0]
+                                        presentValues = attData.present ?: emptyList(),
+                                        absentValues = attData.absent ?: emptyList(),
+                                        lateValues = attData.late ?: emptyList()
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                    StatItem("Present", attendance?.presentCount?.toString() ?: "-")
-                                    StatItem("Absent", attendance?.absentCount?.toString() ?: "-")
-                                    StatItem("Late", attendance?.lateCount?.toString() ?: "-")
+                                    StatItem("Present", (attData.present?.sum() ?: 0).toString())
+                                    StatItem("Absent", (attData.absent?.sum() ?: 0).toString())
+                                    StatItem("Late", (attData.late?.sum() ?: 0).toString())
                                 }
                             }
                         }
@@ -497,4 +496,76 @@ fun InfoTooltipDialog(
             text = { Text(message) }
         )
     }
+}
+
+@Composable
+fun StackedBarChartView(
+    modifier: Modifier = Modifier,
+    labels: List<String>,
+    presentValues: List<Int>,
+    absentValues: List<Int>,
+    lateValues: List<Int>
+) {
+    val entries = labels.indices.map { idx ->
+        BarEntry(
+            idx.toFloat(),
+            floatArrayOf(
+                presentValues.getOrNull(idx)?.toFloat() ?: 0f,
+                absentValues.getOrNull(idx)?.toFloat() ?: 0f,
+                lateValues.getOrNull(idx)?.toFloat() ?: 0f
+            )
+        )
+    }
+    val dataSet = BarDataSet(entries, "Attendance").apply {
+        setColors(
+            android.graphics.Color.parseColor("#4CAF50"), // Present
+            android.graphics.Color.parseColor("#F44336"), // Absent
+            android.graphics.Color.parseColor("#FFEB3B")  // Late
+        )
+        stackLabels = arrayOf("Present", "Absent", "Late")
+        valueTextSize = 24f
+        valueTypeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+        setDrawValues(true)
+        valueFormatter = object : com.github.mikephil.charting.formatter.ValueFormatter() {
+            override fun getFormattedValue(value: Float): String = value.toInt().toString()
+        }
+    }
+    val data = BarData(dataSet)
+    data.barWidth = 0.7f
+
+    val chartWidth = (labels.size * 32).dp
+
+    AndroidView(
+        modifier = modifier.height(240.dp).width(chartWidth).horizontalScroll(rememberScrollState()),
+        factory = { ctx ->
+            BarChart(ctx).apply {
+                this.data = data
+                xAxis.valueFormatter = com.github.mikephil.charting.formatter.IndexAxisValueFormatter(labels)
+                xAxis.granularity = 1f
+                xAxis.setGranularityEnabled(true)
+                xAxis.labelRotationAngle = -45f
+                xAxis.labelCount = labels.size
+                xAxis.setDrawGridLines(false)
+                xAxis.position = com.github.mikephil.charting.components.XAxis.XAxisPosition.BOTTOM
+                axisLeft.axisMinimum = 0f
+                axisRight.isEnabled = false
+                legend.isEnabled = true
+                legend.verticalAlignment = com.github.mikephil.charting.components.Legend.LegendVerticalAlignment.TOP
+                legend.horizontalAlignment = com.github.mikephil.charting.components.Legend.LegendHorizontalAlignment.RIGHT
+                legend.orientation = com.github.mikephil.charting.components.Legend.LegendOrientation.HORIZONTAL
+                legend.setDrawInside(false)
+                description = com.github.mikephil.charting.components.Description().apply { text = "" }
+                setFitBars(true)
+                xAxis.axisMinimum = -0.5f
+                xAxis.axisMaximum = labels.size - 0.5f
+                invalidate()
+            }
+        },
+        update = { chart ->
+            chart.data = data
+            chart.xAxis.valueFormatter = com.github.mikephil.charting.formatter.IndexAxisValueFormatter(labels)
+            chart.xAxis.labelCount = labels.size
+            chart.invalidate()
+        }
+    )
 }
