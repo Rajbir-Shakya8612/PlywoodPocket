@@ -523,7 +523,7 @@ fun StackedBarChartView(
             android.graphics.Color.parseColor("#FFEB3B")  // Late
         )
         stackLabels = arrayOf("Present", "Absent", "Late")
-        valueTextSize = 24f
+        valueTextSize = 18f
         valueTypeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
         setDrawValues(true)
         valueFormatter = object : com.github.mikephil.charting.formatter.ValueFormatter() {
@@ -562,6 +562,33 @@ fun StackedBarChartView(
             }
         },
         update = { chart ->
+            chart.clear()
+            val entries = labels.indices.map { idx ->
+                BarEntry(
+                    idx.toFloat(),
+                    floatArrayOf(
+                        presentValues.getOrNull(idx)?.toFloat() ?: 0f,
+                        absentValues.getOrNull(idx)?.toFloat() ?: 0f,
+                        lateValues.getOrNull(idx)?.toFloat() ?: 0f
+                    )
+                )
+            }
+            val dataSet = BarDataSet(entries, "Attendance").apply {
+                setColors(
+                    android.graphics.Color.parseColor("#4CAF50"),
+                    android.graphics.Color.parseColor("#F44336"),
+                    android.graphics.Color.parseColor("#FFEB3B")
+                )
+                stackLabels = arrayOf("Present", "Absent", "Late")
+                valueTextSize = 12f
+                valueTypeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+                setDrawValues(true)
+                valueFormatter = object : com.github.mikephil.charting.formatter.ValueFormatter() {
+                    override fun getFormattedValue(value: Float): String = value.toInt().toString()
+                }
+            }
+            val data = BarData(dataSet)
+            data.barWidth = 0.7f
             chart.data = data
             chart.xAxis.valueFormatter = com.github.mikephil.charting.formatter.IndexAxisValueFormatter(labels)
             chart.xAxis.labelCount = labels.size
